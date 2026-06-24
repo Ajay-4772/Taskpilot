@@ -3,7 +3,7 @@
 TaskPilot is a premium, full-stack SaaS task management portal built with the **MERN** stack (MongoDB, Express.js, React, Node.js), **Tailwind CSS v4**, **Framer Motion**, and **Firebase Authentication**. It features a state-of-the-art dark-mode glassmorphic user interface, real-time analytics dashboards, and secure token-based user data isolation.
 
 ### 🔗 Live Production Web App
-👉 **[Launch TaskPilot Web Portal](https://mini-project-management-4772.web.app)** 
+👉 **[www.mini-project-management-4772.web.app](https://mini-project-management-4772.web.app)** 
 
 ---
 
@@ -42,12 +42,11 @@ graph TD
     RenderBackend -->|Queries User-Specific Data| MongoAtlas
 
     %% Styling
-    classDef default fill:#111827,stroke:#374151,stroke-width:2px,color:#f3f4f6;
-    class Client fill:#3730a3,stroke:#6366f1,stroke-width:2px,color:#ffffff;
-    class FirebaseHosting fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#ffffff;
-    class FirebaseAuth fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
-    class RenderBackend fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#ffffff;
-    class MongoAtlas fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+    style Client fill:#3730a3,stroke:#6366f1,stroke-width:2px,color:#ffffff
+    style FirebaseHosting fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    style FirebaseAuth fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff
+    style RenderBackend fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#ffffff
+    style MongoAtlas fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#ffffff
 ```
 
 ---
