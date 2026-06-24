@@ -2,6 +2,12 @@ import axios from "axios";
 
 const getApiUrl = () => {
   let url = import.meta.env.VITE_API_URL || "http://localhost:5000/tasks";
+  
+  // Ensure the URL ends with /tasks to prevent fetching the plain-text status page
+  if (url && !url.endsWith("/tasks") && !url.endsWith("/tasks/")) {
+    url = url.endsWith("/") ? `${url}tasks` : `${url}/tasks`;
+  }
+
   try {
     const parsedUrl = new URL(url);
     const host = parsedUrl.hostname;

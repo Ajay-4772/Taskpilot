@@ -1,89 +1,108 @@
-# ✈️ TaskPilot
+# ✈️ TaskPilot — Premium SaaS Task Management Portal
 
-TaskPilot is a premium, full-stack, SaaS-style Task Management Application built using the MERN stack (MongoDB, Express.js, React, Node.js), Tailwind CSS v4, Framer Motion, and Firebase Authentication. It features a modern, responsive layout, real-time analytics, light/dark themes, and complete task filtering and tracking.
+TaskPilot is a premium, full-stack SaaS task management portal built with the **MERN** stack (MongoDB, Express.js, React, Node.js), **Tailwind CSS v4**, **Framer Motion**, and **Firebase Authentication**. It features a state-of-the-art dark-mode glassmorphic user interface, real-time analytics dashboards, and secure token-based user data isolation.
 
----
-
-## 🚀 Key Features
-
-*   **🔒 Secure Authentication**: Full authentication flows including **Google OAuth** popups and **Email/Password** logins powered by Firebase Authentication.
-*   **🎨 Premium SaaS UI/UX**: Custom design system resembling Linear and Vercel. Built with **Tailwind CSS v4** (CSS-first variable themes), custom fonts, glassmorphism headers, `24px` border-radii, and neon radial glow backgrounds.
-*   **🌓 Persisted Theme Switcher**: Toggle seamlessly between Light Theme (soft gray/clean white) and Dark Theme (navy space base). Selections are saved to `localStorage` to persist across page reloads.
-*   **📊 Real-time Dashboard Analytics**: High-fidelity statistics cards showing count summaries for *Total*, *Pending*, *In Progress*, and *Completed* tasks.
-*   **📝 Task Management Features**:
-    *   Create, Read, Update, and Delete (CRUD) tasks.
-    *   Color-coded **Priority Badges** (`Low`, `Medium`, `High`).
-    *   **Due Dates** with warning indicators and red alerts for overdue items.
-*   **🔍 Search & Pill Filters**: Real-time searching across titles/descriptions combined with status pills displaying dynamic task counts (e.g. `All (12)`).
-*   **✨ Smooth Animations**: Fluid page loads, hover lifts (`translate-y-1`), scale hovers, and slide-up modal interfaces powered by **Framer Motion**.
-*   **📱 Responsive Layout**: Built with CSS Grid and Flexbox, fully optimized for Mobile, Tablet, and Desktop screen widths.
+### 🔗 Live Production Web App
+👉 **[Launch TaskPilot Web Portal](https://mini-project-management-4772.web.app)** 
 
 ---
 
-## 🛠️ Technology Stack
+## 🎨 Tech Stack & Tools
 
-### Frontend
-*   **React.js** & **Vite** (Fast React compiler and hot reloading)
-*   **Tailwind CSS v4** (CSS-first styling engine)
-*   **Framer Motion** (Visual animations)
-*   **Firebase SDK** (Google and Email Auth clients)
-*   **Lucide React** (Modern, clean svg icons)
-*   **SweetAlert2** (Premium notification modals)
-*   **Axios** (API requests with automatic token headers interceptor)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS_v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![NodeJS](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![ExpressJS](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase_Auth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Render](https://img.shields.io/badge/Render-000000?style=for-the-badge&logo=render&logoColor=white)
+![Framer Motion](https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)
 
-### Backend
-*   **Node.js** & **Express.js** (Server routes & MVC APIs)
-*   **Firebase Admin SDK** (Token verification middleware)
-*   **Mongoose** (Database object modeling)
+---
 
-### Database
-*   **MongoDB Atlas** (Cloud-hosted NoSQL cluster)
+## 🏗️ System Architecture
+
+TaskPilot is partitioned into a secure frontend client hosted on **Firebase Hosting** and an isolated API backend running on **Render Web Services**. Database persistence is managed via **MongoDB Atlas**, and authentication session state is handled securely by **Firebase Authentication**.
+
+```mermaid
+graph TD
+    %% Nodes
+    Client["📱 Client Web Browser (Mobile / Desktop)"]
+    FirebaseHosting["☁️ Firebase Hosting (Static Assets / React App)"]
+    FirebaseAuth["🔐 Firebase Authentication (Google Popup / Email Sign-In)"]
+    RenderBackend["🚀 Render Web Service (Express.js API Backend)"]
+    MongoAtlas["🍃 MongoDB Atlas (Cloud NoSQL Database)"]
+
+    %% Flow lines
+    Client -->|Loads App over HTTPS| FirebaseHosting
+    Client -->|Authenticates & Retrieves ID Token| FirebaseAuth
+    Client -->|Sends Requests with Bearer Auth Token| RenderBackend
+    RenderBackend -->|Validates Client Token| FirebaseAuth
+    RenderBackend -->|Queries User-Specific Data| MongoAtlas
+
+    %% Styling
+    classDef default fill:#111827,stroke:#374151,stroke-width:2px,color:#f3f4f6;
+    class Client fill:#3730a3,stroke:#6366f1,stroke-width:2px,color:#ffffff;
+    class FirebaseHosting fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#ffffff;
+    class FirebaseAuth fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#ffffff;
+    class RenderBackend fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#ffffff;
+    class MongoAtlas fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#ffffff;
+```
+
+---
+
+## 🌟 Key Features
+
+*   **🔒 Secure Identity Isolation**: Sign in with **Google OAuth** or **Email/Password** logins. All database transactions are strictly isolated by the verified `userId` using Firebase ID Token interceptors.
+*   **🎨 Premium Vercel/Linear Aesthetics**: Clean dark-mode layout with custom typography (Inter & Outfit), dynamic glowing gradients, glassmorphism panel backdrops, custom priority icons, and smooth layout changes.
+*   **📊 Real-time Dashboard Analytics**: Displays counters summarizing *Total*, *Pending*, *In Progress*, and *Completed* tasks, updating automatically on every change.
+*   **🌓 Persisted Color Themes**: Features custom dark and light themes using CSS variables with preferences persisted locally (`localStorage`).
+*   **📝 Rich Task Management**: Features editable task forms with validation, color-coded priority indicators (`Low`, `Medium`, `High`), and date-picker due dates with bright warning badges for overdue tasks.
+*   **📱 Dynamic Local Network Routing**: Integrates an automatic API gateway fallback in developer environments, allowing you to load the app on your mobile phone or tablet on local Wi-Fi without changing `.env` configs.
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-mini-project-management/
+taskpilot/
 ├── backend/
 │   ├── config/
-│   │   ├── db.js                 # MongoDB Atlas connection setup
-│   │   └── firebase.js           # Firebase Admin SDK initializer
+│   │   ├── db.js                 # MongoDB Atlas mongoose connection
+│   │   └── firebase.js           # Firebase Admin SDK configuration
 │   ├── controllers/
-│   │   ├── authController.js     # JWT token verification handler
-│   │   └── taskController.js     # User-isolated task CRUD logic
+│   │   └── taskController.js     # User-isolated task CRUD actions
 │   ├── middleware/
 │   │   ├── authMiddleware.js     # Token verification route-guard
-│   │   └── errorMiddleware.js    # Standardized API error handler
+│   │   └── errorMiddleware.js    # Express global error handler
 │   ├── models/
-│   │   └── Task.js               # MongoDB Task schema
+│   │   └── Task.js               # MongoDB Mongoose Task schema
 │   ├── routes/
 │   │   └── taskRoutes.js         # Protected task endpoints
-│   ├── .env                      # API secret configurations
-│   ├── .env.example              # Template for server secrets
-│   └── server.js                 # Express server entry point
+│   ├── server.js                 # Express server configuration
+│   └── package.json
 │
 └── frontend/
     ├── src/
     │   ├── auth/
-    │   │   └── AuthContext.jsx   # Auth provider & state (Google/Email methods)
+    │   │   └── AuthContext.jsx   # Authentication context & SDK handlers
     │   ├── firebase/
-    │   │   └── firebaseConfig.js # Client Firebase credentials loading
+    │   │   └── firebaseConfig.js # Client-side Firebase SDK configuration
     │   ├── components/
-    │   │   ├── Navbar.jsx        # Sticky floating glassmorphism header
-    │   │   ├── ProtectedRoute.jsx# Page guard routing redirect
-    │   │   ├── TaskCard.jsx      # Task details card
-    │   │   └── TaskFormModal.jsx # Unified create/edit task modal overlay
+    │   │   ├── Navbar.jsx        # Responsive navigation header
+    │   │   ├── ProtectedRoute.jsx# Unauthenticated redirection guard
+    │   │   ├── TaskCard.jsx      # Task detail rendering block
+    │   │   └── TaskFormModal.jsx # Unified create/edit modal form overlay
     │   ├── pages/
-    │   │   ├── Login.jsx         # Split landing page (Google/Email forms)
-    │   │   └── Dashboard.jsx     # Stats, search inputs, filters, and cards
+    │   │   ├── Login.jsx         # Authentication gateway page
+    │   │   └── Dashboard.jsx     # App homepage & statistics hub
     │   ├── services/
-    │   │   └── taskService.js    # Axios client with Bearer auth headers
-    │   ├── index.css             # Theme variables & utility overrides
-    │   ├── App.jsx               # Theme wrappers & route mounts
+    │   │   └── taskService.js    # API service client with Bearer headers
+    │   ├── index.css             # Main styling system and theme variables
+    │   ├── App.jsx               # Entry-point router & theme listener
     │   └── main.jsx              # React mounting root
-    ├── .env.example              # Client credentials template
-    ├── firebase.json             # Hosting deployment config
+    ├── firebase.json             # Firebase deployment configurations
     └── package.json
 ```
 
@@ -100,7 +119,7 @@ mini-project-management/
 
 ### Step 1: Clone the Repository
 ```bash
-git clone <your-github-repo-url>
+git clone https://github.com/your-username/mini-project-management-portal.git
 cd mini-project-management-portal
 ```
 
@@ -119,20 +138,18 @@ cd mini-project-management-portal
    ```env
    PORT=5000
    MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/projectmanagement
-   FIREBASE_PROJECT_ID=your-firebase-project-id
-   
-   # Retrieve this JSON from Firebase Console -> Project Settings -> Service Accounts
    FIREBASE_SERVICE_ACCOUNT={"type":"service_account", "project_id":"your-project-id", ...}
    ```
+   *(Retrieve the `FIREBASE_SERVICE_ACCOUNT` JSON string from Firebase Console -> Project Settings -> Service Accounts -> Generate new private key)*
 4. Start the backend API server:
    ```bash
    npm start
    ```
-   *Logs should print: `Server running on port 5000` and `MongoDB Connected`.*
+   *Logs should output: `Server running on port 5000` and `MongoDB Connected`.*
 
 ---
 
-### Step 3: Configure the Frontend client
+### Step 3: Configure the Frontend Client
 1. Open a new terminal tab and navigate to the frontend directory:
    ```bash
    cd ../frontend
@@ -141,7 +158,7 @@ cd mini-project-management-portal
    ```bash
    npm install
    ```
-3. Create a `.env` file in the `frontend/` folder and supply your Firebase web configuration credentials:
+3. Create a `.env` file in the `frontend/` folder and supply your Firebase client credentials:
    ```env
    VITE_FIREBASE_API_KEY=AIzaSy...your-actual-api-key...
    VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
@@ -150,37 +167,45 @@ cd mini-project-management-portal
    VITE_FIREBASE_MESSAGING_SENDER_ID=83726...
    VITE_FIREBASE_APP_ID=1:83726...
    
-   # For local development, this defaults to localhost:5000. In production, point it to your hosted API url:
-   VITE_API_URL=http://localhost:5000/tasks
+   # Points to your Render backend API URL (ends with /tasks)
+   VITE_API_URL=https://your-backend-service-url.onrender.com/tasks
    ```
-4. Launch the Vite development server:
+4. Launch the local Vite development server:
    ```bash
    npm run dev
    ```
-   *Navigate to [http://localhost:5174/](http://localhost:5174/) to open the application.*
+   *Navigate to [http://localhost:5173/](http://localhost:5173/) on your desktop, or use the local network IP provided in the terminal to view it on your mobile device.*
 
 ---
 
-## ☁️ Deployment
+## ☁️ Production Deployment
 
-### Deploys static React build to Firebase Hosting:
-1. Make sure you are logged in to the Firebase CLI:
+### 1. Backend Web Service (Render)
+1. Push your repository to GitHub.
+2. Sign in to **Render** and create a new **Web Service**.
+3. Link your GitHub repository.
+4. Set the configurations:
+   * **Root Directory:** `backend`
+   * **Runtime:** `Node`
+   * **Build Command:** `npm install`
+   * **Start Command:** `npm start`
+5. Add the environment variables (`MONGO_URI` and `FIREBASE_SERVICE_ACCOUNT`) inside the Render settings tab and click deploy.
+
+### 2. Frontend client (Firebase Hosting)
+1. Build your production assets:
    ```bash
-   firebase login
-   ```
-2. Navigate to the `frontend/` folder, build the production compilation (Vite will inject the `.env` keys into the build), and deploy:
-   ```bash
+   cd frontend
    npm run build
+   ```
+2. Deploy the static build:
+   ```bash
    firebase deploy
    ```
-3. The CLI will output your live Hosting URL (e.g. `https://your-project.web.app`).
-
-### Deploy Backend:
-You can host the node API backend on [Render](https://render.com/) or [Railway](https://railway.app/). Once hosted, update the `VITE_API_URL` variable in your `frontend/.env` to point to the live server URL, compile a new build with `npm run build`, and redeploy.
 
 ---
 
-## 📜 MongoDB Task Schema
+## 📜 MongoDB Task Database Schema
+
 ```json
 {
   "title": "String (required)",
@@ -189,7 +214,7 @@ You can host the node API backend on [Render](https://render.com/) or [Railway](
   "priority": "String (Low | Medium | High)",
   "dueDate": "Date (optional)",
   "createdAt": "Date (default: Date.now)",
-  "userId": "String (required, maps user credentials ownership)"
+  "userId": "String (required, maps user authentication records)"
 }
 ```
 
