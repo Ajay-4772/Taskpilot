@@ -1,6 +1,5 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "dummy-api-key",
@@ -15,24 +14,14 @@ const isFirebaseConfigured = !!(import.meta.env.VITE_FIREBASE_API_KEY && import.
 
 let app;
 let auth;
-let db;
 let googleProvider;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  
-  // Configure Firestore with long-polling and multi-tab persistent cache
-  db = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  });
-  
   googleProvider = new GoogleAuthProvider();
 } catch (error) {
   console.error("Firebase client initialization error:", error);
 }
 
-export { auth, db, googleProvider, isFirebaseConfigured };
+export { auth, googleProvider, isFirebaseConfigured };

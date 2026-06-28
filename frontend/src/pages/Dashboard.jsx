@@ -41,7 +41,7 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
     try {
       setLoading(true);
       setError(null);
-      const response = await getTasks(user.uid);
+      const response = await getTasks();
       setTasks(response.data);
     } catch (err) {
       console.error("Error loading tasks:", err);
@@ -86,7 +86,7 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
         await updateTask(taskToEdit._id, taskData);
         showToast("Task updated successfully!", "success");
       } else {
-        await addTask(user.uid, taskData);
+        await addTask(taskData);
         showToast("Task created successfully!", "success");
       }
       setIsFormModalOpen(false);

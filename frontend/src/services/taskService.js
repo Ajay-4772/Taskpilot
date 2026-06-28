@@ -1,67 +1,49 @@
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
-import { db } from "../firebase/firebaseConfig";
+import axios from "axios";
+import { getBaseUrl } from "../contexts/AuthContext";
 
-// Read tasks directly from Firestore filtered by user's UID
-export const getTasks = async (uid) => {
-  if (!uid) throw new Error("User UID is required to fetch tasks.");
-  const q = query(
-    collection(db, "tasks"),
-    where("uid", "==", uid)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  const tasks = [];
-  querySnapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    tasks.push({ 
-      _id: docSnap.id, 
-      id: docSnap.id, 
-      ...data 
-    });
-  });
-  
-  return { data: tasks };
+// Read tasks directly from MongoDB through Express
+export const getTasks = async () => {
+  const response = await axios.get(`${getBaseUrl()}/tasks`);
+  // Map fields to verify consistency with client task cards (_id / id)
+  const mapped = response.data.map((task) => ({
+    ...task,
+    _id: task._id || task.id,
+    id: task._id || task.id
+  }));
+  return { data: mapped };
 };
 
-// Create task in Firestore attaching the user's UID
-export const addTask = async (uid, taskData) => {
-  if (!uid) throw new Error("User UID is required to add a task.");
-  
+// Create task in MongoDB through Express
+export const addTask = async (taskData) => {
   const payload = {
-    uid,
     title: taskData.title,
     description: taskData.description,
     status: taskData.status || "Pending",
     priority: taskData.priority || "Low",
-    dueDate: taskData.dueDate ? (taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate) : null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    dueDate: taskData.dueDate ? (taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate) : null
   };
-  
-  const docRef = await addDoc(collection(db, "tasks"), payload);
-  return docRef;
+  const response = await axios.post(`${getBaseUrl()}/tasks`, payload);
+  return response.data;
 };
 
-// Edit task in Firestore
+// Edit task in MongoDB through Express
 export const updateTask = async (taskId, taskData) => {
   if (!taskId) throw new Error("Task ID is required to update a task.");
-  const docRef = doc(db, "tasks", taskId);
   
   const payload = {
     title: taskData.title,
     description: taskData.description,
     status: taskData.status,
     priority: taskData.priority,
-    dueDate: taskData.dueDate ? (taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate) : null,
-    updatedAt: new Date().toISOString()
+    dueDate: taskData.dueDate ? (taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate) : null
   };
-  
-  await updateDoc(docRef, payload);
+  const response = await axios.put(`${getBaseUrl()}/tasks/${taskId}`, payload);
+  return response.data;
 };
 
-// Remove task in Firestore
+// Remove task in MongoDB through Express
 export const deleteTask = async (taskId) => {
   if (!taskId) throw new Error("Task ID is required to delete a task.");
-  const docRef = doc(db, "tasks", taskId);
-  await deleteDoc(docRef);
+  const response = await axios.delete(`${getBaseUrl()}/tasks/${taskId}`);
+  return response.data;
 };

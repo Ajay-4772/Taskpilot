@@ -4,6 +4,7 @@ dotenv.config();
 const express = require("express");
 const connectDB = require("./config/db");
 const taskRoutes = require("./routes/taskRoutes");
+const userRoutes = require("./routes/userRoutes");
 const cors = require("cors");
 const errorMiddleware = require("./middleware/errorMiddleware");
 
@@ -15,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/tasks", taskRoutes);
+app.use("/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("TaskPilot API is running...");

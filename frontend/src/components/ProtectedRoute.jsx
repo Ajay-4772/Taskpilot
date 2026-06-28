@@ -1,9 +1,23 @@
 import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 import Login from "../pages/Login";
+import ErrorState from "./common/ErrorState";
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, authError, retrySync } = useAuth();
+
+  // If backend sync failed/timed out, show connection ErrorState
+  if (authError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] p-6 select-none">
+        <ErrorState 
+          type="server" 
+          message={authError.message} 
+          onRetry={retrySync} 
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
