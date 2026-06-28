@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
-import { auth } from "../firebase/firebaseConfig";
-import { User, Mail, Lock, Calendar, Eye, EyeOff, Check, X, ShieldAlert } from "lucide-react";
+import { auth, storage } from "../firebase/firebaseConfig";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { getTasks } from "../services/taskService";
+import { User, Mail, Lock, Calendar, Trash2, Camera, ShieldAlert, Award, FileText, CheckCircle2, Clock } from "lucide-react";
 import ConfirmModal from "../components/common/ConfirmModal";
 
 const ProfileSettings = () => {
-  const { user, updateUserProfile, updateUserEmail, updateUserPassword } = useAuth();
+  const { user, updateUserProfile, updateUserEmail, sendPasswordReset } = useAuth();
   const { showToast } = useToast();
 
   // Name State
@@ -14,18 +16,19 @@ const ProfileSettings = () => {
   const [isNameEditing, setIsNameEditing] = useState(false);
   const [nameLoading, setNameLoading] = useState(false);
 
-  // Email State
+  // File Upload State
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
+
+  // Change Email Modal State
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
-  const [showEmailPass, setShowEmailPass] = useState(false);
 
-  // Password State
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
+  // Task Statistics State
+  const [tasks, setTasks] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   // Confirmation Modals State
   const [confirmModal, setConfirmModal] = useState({
@@ -37,14 +40,53 @@ const ProfileSettings = () => {
     onConfirm: () => {}
   });
 
-  // Sync details
+  // Load user tasks to compute live stats
+  const fetchStats = async () => {
+    try {
+      setStatsLoading(true);
+      const response = await getTasks();
+      setTasks(response.data || []);
+    } catch (err) {
+      console.error("Failed to load user task metrics:", err);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
   useEffect(() => {
     if (user) {
       setName(user.displayName || "");
+      setPhotoPreview(user.photoURL || null);
     }
   }, [user]);
 
-  // Read metadata dates
+  // Compute live task statistics
+  const metrics = useMemo(() => {
+    const total = tasks.length;
+    const completed = tasks.filter((t) => t.status === "Completed").length;
+    const pending = tasks.filter((t) => t.status === "Pending").length;
+    const inProgress = tasks.filter((t) => t.status === "In Progress").length;
+    const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pending, inProgress, rate };
+  }, [tasks]);
+
+  // Generate dynamic recent activity logs
+  const recentActivities = useMemo(() => {
+    return tasks
+      .slice()
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 3)
+      .map((t) => ({
+        id: t._id,
+        text: t.status === "Completed" ? `Completed task "${t.title}"` : `Added task "${t.title}" to workspace`,
+        time: t.updatedAt || t.createdAt
+      }));
+  }, [tasks]);
+
   const getCreationDate = () => {
     const rawDate = auth.currentUser?.metadata?.creationTime;
     if (!rawDate) return "N/A";
@@ -60,19 +102,111 @@ const ProfileSettings = () => {
     return nameStr.charAt(0).toUpperCase();
   };
 
-  const checkPasswordStrength = (pass) => {
-    const checks = {
-      length: pass.length >= 8,
-      uppercase: /[A-Z]/.test(pass),
-      lowercase: /[a-z]/.test(pass),
-      number: /[0-9]/.test(pass),
-      special: /[^A-Za-z0-9]/.test(pass)
-    };
-    const score = Object.values(checks).filter(Boolean).length;
-    return { checks, score };
+  // HTML5 Canvas client-side photo compression
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            resolve(blob);
+          }, "image/jpeg", 0.8);
+        };
+      };
+    });
   };
 
-  const strength = checkPasswordStrength(newPassword);
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("File size exceeds 5MB limit.", "error");
+      return;
+    }
+
+    const allowed = ["image/png", "image/jpeg", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      showToast("Unsupported file format. Please upload PNG, JPEG, or WEBP.", "error");
+      return;
+    }
+
+    setPhotoLoading(true);
+    try {
+      const compressedBlob = await compressImage(file);
+      const storageRef = ref(storage, `profile_pictures/${user.uid}`);
+      await uploadBytes(storageRef, compressedBlob);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      await updateUserProfile(user.displayName, downloadURL);
+      setPhotoPreview(downloadURL);
+      showToast("Profile picture updated successfully!", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Failed to upload profile picture.", "error");
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
+  const triggerRemovePhotoConfirm = () => {
+    if (!photoPreview) return;
+    setConfirmModal({
+      isOpen: true,
+      title: "Remove Profile Picture?",
+      message: "Are you sure you want to delete your profile photo? Your avatar will reset to your workspace initials.",
+      type: "danger",
+      confirmText: "Delete Photo",
+      onConfirm: handleRemovePhoto
+    });
+  };
+
+  const handleRemovePhoto = async () => {
+    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+    setPhotoLoading(true);
+    try {
+      const storageRef = ref(storage, `profile_pictures/${user.uid}`);
+      try {
+        await deleteObject(storageRef);
+      } catch (err) {
+        console.warn("Storage item not found, resetting URL directly.", err);
+      }
+      await updateUserProfile(user.displayName, "");
+      setPhotoPreview(null);
+      showToast("Profile picture removed successfully.", "info");
+    } catch (error) {
+      console.error(error);
+      showToast("Failed to remove profile picture.", "error");
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
 
   const handleUpdateName = async (e) => {
     e.preventDefault();
@@ -83,7 +217,7 @@ const ProfileSettings = () => {
     
     setNameLoading(true);
     try {
-      await updateUserProfile(name);
+      await updateUserProfile(name.trim(), photoPreview || "");
       showToast("Display name updated successfully!", "success");
       setIsNameEditing(false);
     } catch (err) {
@@ -93,104 +227,88 @@ const ProfileSettings = () => {
     }
   };
 
-  // Open confirmation modal for email change
-  const triggerEmailConfirm = (e) => {
-    e.preventDefault();
-    if (!newEmail.trim()) {
-      showToast("New email address is required.", "error");
-      return;
-    }
-    if (!emailPassword) {
-      showToast("Password confirmation is required to authenticate.", "error");
-      return;
-    }
-
+  const triggerPasswordResetConfirm = () => {
     setConfirmModal({
       isOpen: true,
-      title: "Update Email Address?",
-      message: `You are about to change your account email to ${newEmail}. This requires verifying the link sent to the new address before completing.`,
-      type: "email",
-      confirmText: "Verify & Update",
-      onConfirm: executeEmailChange
+      title: "Reset Account Password?",
+      message: "A password reset link will be dispatched to your registered email. You will use the link to configure your credentials.",
+      type: "warning",
+      confirmText: "Send Reset Link",
+      onConfirm: handlePasswordReset
     });
   };
 
-  const executeEmailChange = async () => {
+  const handlePasswordReset = async () => {
     setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+    try {
+      await sendPasswordReset();
+      showToast("Password reset link sent successfully.", "success");
+    } catch (err) {
+      showToast("Failed to send password reset email.", "error");
+    }
+  };
+
+  const handleEmailChangeSubmit = async (e) => {
+    e.preventDefault();
+    if (!newEmail.trim()) {
+      showToast("New email is required.", "error");
+      return;
+    }
+    if (!emailPassword) {
+      showToast("Verification password is required.", "error");
+      return;
+    }
+
     setEmailLoading(true);
     try {
-      await updateUserEmail(emailPassword, newEmail);
-      showToast("Verification link sent! Please activate it to complete changes.", "success");
+      await updateUserEmail(emailPassword, newEmail.trim());
+      showToast("Verification link sent! Changes take effect when verified.", "success");
+      setIsEmailModalOpen(false);
       setNewEmail("");
       setEmailPassword("");
     } catch (err) {
-      showToast(err.message || "Failed to update email.", "error");
+      showToast(err.message || "Failed to change email credentials.", "error");
     } finally {
       setEmailLoading(false);
     }
   };
 
-  // Open confirmation modal for password change
-  const triggerPasswordConfirm = (e) => {
-    e.preventDefault();
-    if (!currentPassword) {
-      showToast("Current password is required.", "error");
-      return;
-    }
-    if (strength.score < 5) {
-      showToast("New password must satisfy all security requirements.", "error");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showToast("Passwords do not match.", "error");
-      return;
-    }
-    if (currentPassword === newPassword) {
-      showToast("New password cannot match the current password.", "error");
-      return;
-    }
-
-    setConfirmModal({
-      isOpen: true,
-      title: "Change Account Password?",
-      message: "Are you sure you want to change your login credentials? You will remain signed in.",
-      type: "password",
-      confirmText: "Change Password",
-      onConfirm: executePasswordChange
-    });
-  };
-
-  const executePasswordChange = async () => {
-    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-    setPasswordLoading(true);
-    try {
-      await updateUserPassword(currentPassword, newPassword);
-      showToast("Password updated successfully!", "success");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err) {
-      showToast(err.message || "Failed to change password.", "error");
-    } finally {
-      setPasswordLoading(false);
-    }
-  };
-
   return (
-    <div className="w-full max-w-4xl mx-auto px-6 py-8 flex-grow select-none">
+    <div className="w-full max-w-5xl mx-auto px-6 py-8 flex-grow select-none">
       {/* Page Title */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold tracking-tight mb-1 text-[var(--text-main)]">Profile Settings</h2>
-        <p className="text-xs text-[var(--text-muted)] font-medium">Manage your TaskFlow credentials and workspace details</p>
+        <h2 className="text-xl font-bold tracking-tight mb-1 text-[var(--text-main)]">Profile Details</h2>
+        <p className="text-xs text-[var(--text-muted)] font-medium">Manage workspace configurations and credential settings</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left pane: Modern initials avatar */}
-        <div className="md:col-span-1">
+        {/* Left pane: Photo Upload & Info summary */}
+        <div className="lg:col-span-1 space-y-6">
           <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[16px] p-6 shadow-sm flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-md bg-zinc-950 border border-zinc-800 mb-4 select-none">
-              {getInitials(user?.displayName || user?.email)}
+            
+            {/* Uploadable profile picture bubble */}
+            <div className="relative group mb-4">
+              <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-3xl font-extrabold shadow-md bg-zinc-950 border border-zinc-800 select-none relative">
+                {photoPreview ? (
+                  <img src={photoPreview} alt={user?.displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{getInitials(user?.displayName || user?.email)}</span>
+                )}
+                
+                {/* Photo loading overlay spinner */}
+                {photoLoading && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                    <span className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload button hover mask */}
+              <label className="absolute bottom-0 right-0 p-2 bg-black text-white rounded-full border border-zinc-800 cursor-pointer shadow-md hover:scale-105 transition-all flex items-center justify-center">
+                <Camera size={13} />
+                <input type="file" onChange={handlePhotoChange} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={photoLoading} />
+              </label>
             </div>
 
             <h3 className="text-sm font-bold text-[var(--text-main)] mb-0.5">
@@ -200,22 +318,60 @@ const ProfileSettings = () => {
               {user?.email}
             </p>
 
-            <div className="flex items-center gap-1.5 py-1 px-3 bg-zinc-100 dark:bg-zinc-900 border border-[var(--border-color)] rounded-lg text-[9px] text-[var(--text-muted)] font-bold">
+            <div className="flex gap-2 w-full justify-center">
+              <button
+                type="button"
+                onClick={triggerRemovePhotoConfirm}
+                className="px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-950/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/15 text-[9px] font-bold transition-all cursor-pointer bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!photoPreview || photoLoading}
+              >
+                Remove Photo
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 py-1.5 px-3 bg-zinc-50 dark:bg-zinc-900 border border-[var(--border-color)] rounded-lg text-[9px] text-[var(--text-muted)] font-bold mt-6 w-full justify-center">
               <Calendar size={11} />
-              <span>Joined {getCreationDate()}</span>
+              <span>Member Since: {getCreationDate()}</span>
+            </div>
+          </div>
+
+          {/* Task stats display card */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[16px] p-6 shadow-sm space-y-4">
+            <h4 className="text-xs font-bold text-[var(--text-main)] uppercase tracking-wider border-b border-[var(--border-color)] pb-2 flex items-center gap-1.5">
+              <Award size={13} />
+              <span>Workspace Statistics</span>
+            </h4>
+            
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-[var(--border-color)]">
+                <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase block mb-0.5">Completed</span>
+                <span className="text-sm font-extrabold text-[var(--text-main)]">{metrics.completed}</span>
+              </div>
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-[var(--border-color)]">
+                <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase block mb-0.5">In Progress</span>
+                <span className="text-sm font-extrabold text-[var(--text-main)]">{metrics.inProgress}</span>
+              </div>
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-[var(--border-color)]">
+                <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase block mb-0.5">Pending</span>
+                <span className="text-sm font-extrabold text-[var(--text-main)]">{metrics.pending}</span>
+              </div>
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-[var(--border-color)]">
+                <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase block mb-0.5">Completion Rate</span>
+                <span className="text-sm font-extrabold text-[var(--text-main)]">{metrics.rate}%</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right pane: Monochrome B&W setting details */}
-        <div className="md:col-span-2 space-y-6">
+        {/* Right pane: Monochrome setting details */}
+        <div className="lg:col-span-2 space-y-6">
           
           {/* Change Display Name */}
           <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[16px] p-6 shadow-sm space-y-4">
             <div className="flex justify-between items-center pb-3 border-b border-[var(--border-color)]">
               <div>
-                <h4 className="text-xs font-bold text-[var(--text-main)]">Workspace Details</h4>
-                <p className="text-[9px] text-[var(--text-muted)]">Your display identity</p>
+                <h4 className="text-xs font-bold text-[var(--text-main)]">Profile Name</h4>
+                <p className="text-[9px] text-[var(--text-muted)]">Your display name across the workspace</p>
               </div>
               {!isNameEditing && (
                 <button
@@ -231,7 +387,7 @@ const ProfileSettings = () => {
             {isNameEditing ? (
               <form onSubmit={handleUpdateName} className="space-y-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Workspace Name</label>
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Full Name</label>
                   <div className="relative">
                     <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                     <input
@@ -283,224 +439,152 @@ const ProfileSettings = () => {
             )}
           </div>
 
-          {/* Change Email */}
+          {/* Secure Workflows: Reset Password & Change Email */}
           <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[16px] p-6 shadow-sm space-y-4">
             <div className="pb-3 border-b border-[var(--border-color)]">
-              <h4 className="text-xs font-bold text-[var(--text-main)]">Change Email Address</h4>
-              <p className="text-[9px] text-[var(--text-muted)]">Re-authentication is required to update email credentials</p>
+              <h4 className="text-xs font-bold text-[var(--text-main)]">Security Workflows</h4>
+              <p className="text-[9px] text-[var(--text-muted)]">Secure modifications verified via email workflows</p>
             </div>
 
-            <form onSubmit={triggerEmailConfirm} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">New Email Address</label>
-                  <div className="relative">
-                    <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      placeholder="new@example.com"
-                      className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2 pl-10 pr-4 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all"
-                      disabled={emailLoading}
-                      required
-                    />
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {/* Change Email Button Card */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-[var(--border-color)] p-4 rounded-xl flex flex-col justify-between items-start gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold text-[var(--text-main)] flex items-center gap-1">
+                    <Mail size={12} />
+                    <span>Workspace Email</span>
+                  </span>
+                  <p className="text-[9px] text-[var(--text-muted)] leading-relaxed">
+                    Update your primary account email. This requires verification before changing.
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEmailModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold transition-all cursor-pointer border-0"
+                >
+                  Change Email
+                </button>
+              </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Verify Password</label>
-                  <div className="relative">
-                    <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                    <input
-                      type={showEmailPass ? "text" : "password"}
-                      value={emailPassword}
-                      onChange={(e) => setEmailPassword(e.target.value)}
-                      placeholder="Current password"
-                      className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2 pl-10 pr-10 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all"
-                      disabled={emailLoading}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowEmailPass(!showEmailPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border-0 bg-transparent cursor-pointer"
-                    >
-                      {showEmailPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
+              {/* Reset Password Button Card */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-[var(--border-color)] p-4 rounded-xl flex flex-col justify-between items-start gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold text-[var(--text-main)] flex items-center gap-1">
+                    <Lock size={12} />
+                    <span>Workspace Password</span>
+                  </span>
+                  <p className="text-[9px] text-[var(--text-muted)] leading-relaxed">
+                    Request an official Firebase password reset link sent to your current email.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={triggerPasswordResetConfirm}
+                  className="px-3.5 py-1.5 rounded-lg border border-[var(--border-color)] hover:border-black dark:hover:border-white text-[10px] font-bold text-[var(--text-main)] transition-colors cursor-pointer bg-transparent"
+                >
+                  Reset Password
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Activity List */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[16px] p-6 shadow-sm space-y-4">
+            <h4 className="text-xs font-bold text-[var(--text-main)] uppercase tracking-wider border-b border-[var(--border-color)] pb-2 flex items-center gap-1.5">
+              <Clock size={13} />
+              <span>Recent Activity</span>
+            </h4>
+
+            {recentActivities.length === 0 ? (
+              <p className="text-[10px] text-[var(--text-muted)] italic font-semibold">No recent activity logs available.</p>
+            ) : (
+              <div className="space-y-3">
+                {recentActivities.map((act) => (
+                  <div key={act.id} className="flex items-center gap-3 text-[10px] py-1 border-b border-zinc-50 dark:border-zinc-900/40 last:border-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 shrink-0" />
+                    <span className="text-[var(--text-muted)] flex-grow font-medium">{act.text}</span>
+                    <span className="text-[8px] text-zinc-450 shrink-0">
+                      {new Date(act.time).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    </span>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Re-authenticate & Change Email Modal overlay */}
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsEmailModalOpen(false)} />
+          <div className="relative z-10 w-full max-w-[400px] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[20px] p-6 shadow-2xl">
+            <h3 className="text-sm font-extrabold mb-3 text-[var(--text-main)]">Change Primary Email</h3>
+            <p className="text-[9px] text-[var(--text-muted)] mb-5 leading-normal">
+              Changing your email requires re-authenticating with your current password. A verification link will be dispatched to the new address.
+            </p>
+
+            <form onSubmit={handleEmailChangeSubmit} className="space-y-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">New Email Address</label>
+                <div className="relative">
+                  <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="new@example.com"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2 pl-10 pr-4 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all"
+                    disabled={emailLoading}
+                    required
+                  />
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Verify Password</label>
+                <div className="relative">
+                  <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                  <input
+                    type="password"
+                    value={emailPassword}
+                    onChange={(e) => setEmailPassword(e.target.value)}
+                    placeholder="Current password"
+                    className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2 pl-10 pr-4 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all"
+                    disabled={emailLoading}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEmailModalOpen(false)}
+                  className="px-3.5 py-1.5 rounded-lg border border-[var(--border-color)] text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all cursor-pointer bg-transparent text-[var(--text-main)]"
+                  disabled={emailLoading}
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   className="px-3.5 py-1.5 rounded-lg bg-black dark:bg-white text-white dark:text-black text-xs font-bold transition-colors cursor-pointer border-0"
                   disabled={emailLoading}
                 >
                   {emailLoading ? (
-                    <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <span>Update Email</span>
+                    <span>Submit</span>
                   )}
                 </button>
               </div>
             </form>
           </div>
-
-          {/* Change Password */}
-          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[16px] p-6 shadow-sm space-y-4">
-            <div className="pb-3 border-b border-[var(--border-color)]">
-              <h4 className="text-xs font-bold text-[var(--text-main)]">Change Password</h4>
-              <p className="text-[9px] text-[var(--text-muted)]">Requires re-authentication prior to credential replacement</p>
-            </div>
-
-            <form onSubmit={triggerPasswordConfirm} className="space-y-4">
-              {/* Current Password */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Current Password</label>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input
-                    type={showPass.current ? "text" : "password"}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2 pl-10 pr-10 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all"
-                    disabled={passwordLoading}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass({ ...showPass, current: !showPass.current })}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border-0 bg-transparent cursor-pointer"
-                  >
-                    {showPass.current ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* New Password */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">New Password</label>
-                  <div className="relative">
-                    <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                    <input
-                      type={showPass.new ? "text" : "password"}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2 pl-10 pr-10 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all"
-                      disabled={passwordLoading}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPass({ ...showPass, new: !showPass.new })}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border-0 bg-transparent cursor-pointer"
-                    >
-                      {showPass.new ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Confirm New Password */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Confirm New Password</label>
-                  <div className="relative">
-                    <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                    <input
-                      type={showPass.confirm ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2 pl-10 pr-10 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all"
-                      disabled={passwordLoading}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPass({ ...showPass, confirm: !showPass.confirm })}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border-0 bg-transparent cursor-pointer"
-                    >
-                      {showPass.confirm ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Password strength checklist display */}
-              {newPassword && (
-                <div className="bg-zinc-50 dark:bg-zinc-900 border border-[var(--border-color)] p-3.5 rounded-xl space-y-2.5">
-                  <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    <span>Password Strength</span>
-                    <span className={`font-bold ${
-                      strength.score <= 2 ? "text-red-500" : strength.score <= 4 ? "text-amber-500" : "text-emerald-500"
-                    }`}>
-                      {strength.score <= 2 ? "Weak" : strength.score <= 4 ? "Good" : "Excellent"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {[1, 2, 3, 4, 5].map((level) => (
-                      <div 
-                        key={level} 
-                        className={`h-1.5 rounded-full transition-all ${
-                          strength.score >= level 
-                            ? strength.score <= 2 
-                              ? "bg-red-500" 
-                              : strength.score <= 4 
-                              ? "bg-amber-500" 
-                              : "bg-emerald-500"
-                            : "bg-zinc-200 dark:bg-zinc-800"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] text-[var(--text-muted)] font-medium">
-                    <div className="flex items-center gap-1">
-                      {strength.checks.length ? <Check size={10} className="text-emerald-500 shrink-0" /> : <X size={10} className="text-red-500 shrink-0" />}
-                      <span>Min 8 characters</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {strength.checks.uppercase ? <Check size={10} className="text-emerald-500 shrink-0" /> : <X size={10} className="text-red-500 shrink-0" />}
-                      <span>One uppercase</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {strength.checks.lowercase ? <Check size={10} className="text-emerald-500 shrink-0" /> : <X size={10} className="text-red-500 shrink-0" />}
-                      <span>One lowercase</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {strength.checks.number ? <Check size={10} className="text-emerald-500 shrink-0" /> : <X size={10} className="text-red-500 shrink-0" />}
-                      <span>One digit</span>
-                    </div>
-                    <div className="flex items-center gap-1 col-span-2">
-                      {strength.checks.special ? <Check size={10} className="text-emerald-500 shrink-0" /> : <X size={10} className="text-red-500 shrink-0" />}
-                      <span>One special character</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  className="px-3.5 py-1.5 rounded-lg bg-black dark:bg-white text-white dark:text-black text-xs font-bold transition-colors cursor-pointer border-0"
-                  disabled={passwordLoading || (newPassword && strength.score < 5)}
-                >
-                  {passwordLoading ? (
-                    <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span>Change Password</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-
         </div>
-
-      </div>
+      )}
 
       {/* Confirmation Dialog overlay */}
       <ConfirmModal

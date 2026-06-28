@@ -1,11 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { LayoutDashboard, User, Sun, Moon, LogOut, Menu, X, CheckSquare } from "lucide-react";
+import { LayoutDashboard, User, Sun, Moon, LogOut, Menu, X, CheckSquare, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode, onToggleTheme }) => {
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Initialize sidebar collapsed state (mobile/tablet start collapsed automatically)
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (window.innerWidth < 768) return true;
+    const saved = localStorage.getItem("taskflow_sidebar_collapsed");
+    return saved === "true";
+  });
+
+  // Persist sidebar collapsed status
+  useEffect(() => {
+    localStorage.setItem("taskflow_sidebar_collapsed", isCollapsed);
+  }, [isCollapsed]);
 
   const getInitials = (name) => {
     if (!name) return "U";
@@ -18,17 +30,41 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
   ];
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-900 text-zinc-50 select-none">
+    <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-900 text-zinc-50 select-none relative">
       {/* Sidebar Header Logo */}
-      <div className="h-[70px] px-6 border-b border-zinc-900 flex items-center gap-3">
-        <div className="flex items-center justify-center bg-white text-black rounded-lg w-8 h-8 font-bold">
-          <CheckSquare size={16} />
+      <div className={`h-[70px] px-4 border-b border-zinc-900 flex items-center ${isCollapsed ? "justify-center" : "justify-between"} gap-2`}>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center bg-white text-black rounded-lg w-8 h-8 font-bold shrink-0">
+            <CheckSquare size={16} />
+          </div>
+          {!isCollapsed && <span className="text-base font-bold tracking-tight text-white">TaskFlow</span>}
         </div>
-        <span className="text-base font-bold tracking-tight text-white">TaskFlow</span>
+        {!isCollapsed && (
+          <button 
+            type="button" 
+            onClick={() => setIsCollapsed(true)}
+            className="text-zinc-400 hover:text-white p-1 hover:bg-zinc-900 rounded transition-all cursor-pointer border-0 bg-transparent flex items-center justify-center"
+            title="Collapse Sidebar"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
       </div>
 
+      {/* Floating expand chevron for collapsed state */}
+      {isCollapsed && (
+        <button 
+          type="button" 
+          onClick={() => setIsCollapsed(false)}
+          className="absolute -right-3 top-[22px] w-6 h-6 rounded-full bg-zinc-950 border border-zinc-850 text-zinc-450 hover:text-white flex items-center justify-center transition-all cursor-pointer z-50 shadow-md"
+          title="Expand Sidebar"
+        >
+          <ChevronRight size={12} />
+        </button>
+      )}
+
       {/* Navigation Links */}
-      <div className="flex-grow py-6 px-4 space-y-1">
+      <div className="flex-grow py-6 px-3 space-y-1.5">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -40,44 +76,47 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
                 onTabChange(item.id);
                 setMobileOpen(false);
               }}
-              className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border-0 ${
+              className={`flex items-center ${isCollapsed ? "justify-center px-0" : "px-4"} gap-3 w-full py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border-0 ${
                 isActive 
-                  ? "bg-white text-black" 
+                  ? "bg-white text-black font-bold" 
                   : "bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
               }`}
+              title={isCollapsed ? item.label : ""}
             >
-              <Icon size={16} />
-              <span>{item.label}</span>
+              <Icon size={16} className="shrink-0" />
+              {!isCollapsed && <span>{item.label}</span>}
             </button>
           );
         })}
       </div>
 
       {/* Sidebar Footer Controls */}
-      <div className="p-4 border-t border-zinc-900 space-y-4">
+      <div className="p-3 border-t border-zinc-900 flex flex-col gap-4 items-center">
         {/* User initials info card */}
         {user && (
-          <div className="flex items-center gap-3 px-2">
+          <div className={`flex items-center ${isCollapsed ? "justify-center w-full" : "gap-3 px-2 w-full"}`}>
             <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
               {getInitials(user.displayName || user.email)}
             </div>
-            <div className="min-w-0 flex-grow">
-              <p className="text-xs font-bold text-white truncate leading-none mb-1">
-                {user.displayName || "Workspace Member"}
-              </p>
-              <p className="text-[10px] text-zinc-500 truncate leading-none">
-                {user.email}
-              </p>
-            </div>
+            {!isCollapsed && (
+              <div className="min-w-0 flex-grow">
+                <p className="text-xs font-bold text-white truncate leading-none mb-1">
+                  {user.displayName || "Workspace Member"}
+                </p>
+                <p className="text-[10px] text-zinc-500 truncate leading-none">
+                  {user.email}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2 pt-2">
+        <div className={`flex ${isCollapsed ? "flex-col items-center gap-3 w-full" : "items-center justify-between gap-2 w-full"} pt-2`}>
           {/* Sun/Moon Theme switcher */}
           <button
             type="button"
             onClick={onToggleTheme}
-            className="flex items-center justify-center p-2 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-transparent text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+            className="flex items-center justify-center p-2 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-transparent text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer shrink-0"
             title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             {darkMode ? <Sun size={14} /> : <Moon size={14} />}
@@ -87,10 +126,11 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
           <button
             type="button"
             onClick={onLogoutClick}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-zinc-800 hover:border-red-900 hover:bg-red-950/20 text-zinc-400 hover:text-red-400 transition-all cursor-pointer bg-transparent text-xs font-semibold"
+            className={`flex items-center justify-center ${isCollapsed ? "p-2 rounded-lg" : "px-3 py-2 rounded-lg"} border border-zinc-800 hover:border-red-950 hover:bg-red-950/20 text-zinc-400 hover:text-red-400 transition-all cursor-pointer bg-transparent text-xs font-semibold shrink-0`}
+            title={isCollapsed ? "Logout" : ""}
           >
-            <LogOut size={14} />
-            <span>Logout</span>
+            <LogOut size={14} className="shrink-0" />
+            {!isCollapsed && <span className="ml-1.5">Logout</span>}
           </button>
         </div>
       </div>
@@ -118,10 +158,14 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
         </button>
       </header>
 
-      {/* Desktop sidebar wrapper */}
-      <aside className="hidden md:block w-[240px] shrink-0 sticky top-0 h-screen z-40">
+      {/* Desktop sidebar wrapper with spring transitions */}
+      <motion.aside 
+        animate={{ width: isCollapsed ? 70 : 240 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="hidden md:block shrink-0 sticky top-0 h-screen z-40 overflow-hidden"
+      >
         <SidebarContent />
-      </aside>
+      </motion.aside>
 
       {/* Mobile menu drawer */}
       <AnimatePresence>
@@ -150,7 +194,7 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
       </AnimatePresence>
 
       {/* Right panel layout content */}
-      <main className="flex-grow flex flex-col min-w-0 relative z-10">
+      <main className="flex-grow flex flex-col min-w-0 relative z-10 transition-all duration-350">
         {children}
       </main>
     </div>

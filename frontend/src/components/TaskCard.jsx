@@ -17,7 +17,7 @@ const TaskCard = React.memo(({ task, onComplete, onEdit, onDelete }) => {
   const getStatusClass = (status) => {
     switch (status) {
       case "Completed":
-        return "bg-zinc-100 dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800";
+        return "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30";
       case "In Progress":
         return "bg-zinc-50 dark:bg-zinc-900/60 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700";
       case "Pending":
@@ -82,29 +82,35 @@ const TaskCard = React.memo(({ task, onComplete, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* Actions buttons */}
         <div className="flex justify-end items-center gap-2 mt-4">
-          {task.status !== "Completed" && (
-            <button 
-              type="button"
-              className="flex items-center gap-1 text-[10px] font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-900 border border-[var(--border-color)] hover:bg-zinc-200 dark:hover:bg-zinc-800 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
-              onClick={() => onComplete(task._id)}
-              title="Mark Completed"
-            >
+          {task.status === "Completed" ? (
+            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-900/35 px-2.5 py-1.5 rounded-lg select-none">
               <CheckCircle2 size={12} />
-              <span>Complete</span>
-            </button>
-          )}
+              <span>Completed</span>
+            </span>
+          ) : (
+            <>
+              <button 
+                type="button"
+                className="flex items-center gap-1 text-[10px] font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-900 border border-[var(--border-color)] hover:bg-zinc-200 dark:hover:bg-zinc-800 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                onClick={() => onComplete(task)}
+                title="Mark Completed"
+              >
+                <CheckCircle2 size={12} />
+                <span>Complete</span>
+              </button>
 
-          <button 
-            type="button"
-            className="flex items-center gap-1 text-[10px] font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-900 border border-[var(--border-color)] hover:bg-zinc-200 dark:hover:bg-zinc-800 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
-            onClick={() => onEdit(task)}
-            title="Edit Task"
-          >
-            <Edit3 size={12} />
-            <span>Edit</span>
-          </button>
+              <button 
+                type="button"
+                className="flex items-center gap-1 text-[10px] font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-900 border border-[var(--border-color)] hover:bg-zinc-200 dark:hover:bg-zinc-800 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                onClick={() => onEdit(task)}
+                title="Edit Task"
+              >
+                <Edit3 size={12} />
+                <span>Edit</span>
+              </button>
+            </>
+          )}
 
           <button 
             type="button"

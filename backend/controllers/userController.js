@@ -2,13 +2,14 @@ const User = require("../models/User");
 
 const syncUser = async (req, res, next) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, photoURL } = req.body;
     const uid = req.user.uid;
 
     let user = await User.findOne({ uid });
     if (user) {
       if (name) user.name = name;
       if (email) user.email = email;
+      if (photoURL !== undefined) user.photoURL = photoURL;
       user.updatedAt = Date.now();
       await user.save();
     } else {
@@ -16,6 +17,7 @@ const syncUser = async (req, res, next) => {
         uid,
         name: name || email.split("@")[0],
         email,
+        photoURL: photoURL || "",
         createdAt: Date.now(),
         updatedAt: Date.now()
       });
@@ -41,10 +43,15 @@ const getMe = async (req, res, next) => {
 
 const updateProfile = async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const { name, photoURL } = req.body;
+    const updateData = { updatedAt: Date.now() };
+    
+    if (name !== undefined) updateData.name = name;
+    if (photoURL !== undefined) updateData.photoURL = photoURL;
+
     const user = await User.findOneAndUpdate(
       { uid: req.user.uid },
-      { name, updatedAt: Date.now() },
+      updateData,
       { new: true }
     );
     if (!user) {
@@ -75,7 +82,6 @@ const updateEmail = async (req, res, next) => {
 
 const updatePassword = async (req, res, next) => {
   try {
-    // Password details are modified securely in Firebase Auth.
     res.status(200).json({ success: true, message: "Password updated successfully" });
   } catch (error) {
     next(error);

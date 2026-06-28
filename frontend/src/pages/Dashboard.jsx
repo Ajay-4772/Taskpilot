@@ -81,8 +81,6 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
     if (!user?.uid) return;
     try {
       if (taskToEdit) {
-        // Optimistic UI
-        setTasks((prev) => prev.map((t) => t._id === taskToEdit._id ? { ...t, ...taskData } : t));
         await updateTask(taskToEdit._id, taskData);
         showToast("Task updated successfully!", "success");
       } else {
@@ -93,37 +91,32 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
       fetchTasks();
     } catch (err) {
       console.error(err);
-      showToast("Failed to save changes.", "error");
+      showToast("Unable to update task.", "error");
       fetchTasks();
     }
   };
 
   // Triggers confirmation modal before complete
-  const handleCompleteTaskClick = useCallback((id) => {
+  const handleCompleteTaskClick = useCallback((task) => {
     setConfirmModal({
       isOpen: true,
       title: "Complete Task?",
       message: "Are you sure you want to mark this task as completed? This will move it to the Completed category.",
       type: "success",
       confirmText: "Mark Completed",
-      onConfirm: () => executeCompleteTask(id)
+      onConfirm: () => executeCompleteTask(task)
     });
   }, []);
 
-  const executeCompleteTask = async (id) => {
+  const executeCompleteTask = async (taskObj) => {
     setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-    // Optimistic UI
-    setTasks((prev) => prev.map((t) => t._id === id ? { ...t, status: "Completed" } : t));
-    showToast("Task marked completed!", "success");
     try {
-      const taskObj = tasks.find((t) => t._id === id);
-      if (taskObj) {
-        await updateTask(id, { ...taskObj, status: "Completed" });
-      }
+      await updateTask(taskObj._id, { ...taskObj, status: "Completed" });
+      showToast("Task marked completed!", "success");
       fetchTasks();
     } catch (err) {
       console.error(err);
-      showToast("Failed to update status. Rolling back.", "error");
+      showToast("Unable to update task.", "error");
       fetchTasks();
     }
   };
@@ -142,17 +135,14 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
 
   const executeDeleteTask = async (id) => {
     setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-    // Optimistic UI
-    const original = [...tasks];
-    setTasks((prev) => prev.filter((t) => t._id !== id));
-    showToast("Task deleted.", "info");
     try {
       await deleteTask(id);
+      showToast("Task deleted successfully.", "success");
       fetchTasks();
     } catch (err) {
       console.error(err);
-      setTasks(original);
-      showToast("Failed to delete task.", "error");
+      showToast("Unable to delete task.", "error");
+      fetchTasks();
     }
   };
 

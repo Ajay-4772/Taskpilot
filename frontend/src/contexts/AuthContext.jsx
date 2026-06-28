@@ -12,7 +12,8 @@ import {
   verifyBeforeUpdateEmail,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  sendEmailVerification
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import axios from "axios";
 
@@ -43,8 +44,12 @@ export const AuthProvider = ({ children }) => {
     // Call Express Backend API to sync profile in MongoDB
     const response = await axios.post(
       `${getBaseUrl()}/users/sync`,
-      { name: displayName, email: firebaseUser.email },
-      { timeout: 10000 } // 10 seconds timeout constraint
+      { 
+        name: displayName, 
+        email: firebaseUser.email,
+        photoURL: firebaseUser.photoURL || "" 
+      },
+      { timeout: 10000 }
     );
 
     const dbUser = response.data;
@@ -52,7 +57,7 @@ export const AuthProvider = ({ children }) => {
       uid: firebaseUser.uid,
       displayName: dbUser.name,
       email: dbUser.email,
-      photoURL: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(dbUser.name)}&background=18181b&color=fff`,
+      photoURL: dbUser.photoURL || "",
       createdAt: dbUser.createdAt
     };
 
@@ -167,19 +172,27 @@ export const AuthProvider = ({ children }) => {
     return result.user;
   };
 
-  const updateUserProfile = async (displayName) => {
+  const updateUserProfile = async (displayName, photoURL = undefined) => {
     if (!auth.currentUser) throw new Error("No authenticated user");
-    await updateProfile(auth.currentUser, { displayName });
+    
+    const updates = {};
+    if (displayName !== undefined) updates.displayName = displayName;
+    if (photoURL !== undefined) updates.photoURL = photoURL;
+
+    await updateProfile(auth.currentUser, updates);
     
     // Sync update to MongoDB
-    const response = await axios.put(`${getBaseUrl()}/users/profile`, { name: displayName });
+    const response = await axios.put(`${getBaseUrl()}/users/profile`, { 
+      name: displayName,
+      photoURL: photoURL 
+    });
     
     // Sync local state details
     const userDetails = {
       uid: auth.currentUser.uid,
       displayName: response.data.name,
       email: response.data.email,
-      photoURL: auth.currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(response.data.name)}&background=18181b&color=fff`,
+      photoURL: response.data.photoURL || "",
       createdAt: response.data.createdAt
     };
     setUser(userDetails);
@@ -202,14 +215,16 @@ export const AuthProvider = ({ children }) => {
     await axios.put(`${getBaseUrl()}/users/email`, { email: newEmail });
   };
 
-  const updateUserPassword = async (currentPassword, newPassword) => {
+  const sendPasswordReset = async () => {
     if (!auth.currentUser) throw new Error("No authenticated user");
-    const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
-    await reauthenticateWithCredential(auth.currentUser, credential);
-    await updatePassword(auth.currentUser, newPassword);
-    
-    // Alert backend (optional sync)
-    await axios.put(`${getBaseUrl()}/users/password`, {});
+    await sendPasswordResetEmail(auth, auth.currentUser.email);
+  };
+
+  const sendForgotPasswordEmail = async (email) => {
+    if (!isFirebaseConfigured || !auth) {
+      throw new Error("Firebase Authentication is not configured.");
+    }
+    await sendPasswordResetEmail(auth, email);
   };
 
   const logout = async () => {
@@ -242,7 +257,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUserProfile,
     updateUserEmail,
-    updateUserPassword,
+    sendPasswordReset,
+    sendForgotPasswordEmail,
     isFirebaseConfigured
   };
 
