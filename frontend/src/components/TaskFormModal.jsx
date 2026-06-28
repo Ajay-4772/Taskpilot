@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, Check, ChevronDown, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -65,29 +66,78 @@ const CustomDropdown = ({ value, onChange, options, disabled }) => {
   );
 };
 
-// Custom Date Picker (Calendar popover) Component
+// Custom Date Picker with React Portal & Intelligent Viewport Positioning
 const CustomDatePicker = ({ value, onChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => {
     return value ? new Date(value) : new Date();
   });
-  const pickerRef = useRef(null);
+  
+  const [coords, setCoords] = useState({ top: 0, left: 0, openUpward: false });
+  const buttonRef = useRef(null);
+
+  const [focusedDate, setFocusedDate] = useState(() => {
+    return value ? new Date(value) : new Date();
+  });
+
+  // Calculate viewport boundaries and open direction
+  const updatePosition = () => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const calendarHeight = 292;
+    const calendarWidth = 270;
+    
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpward = spaceBelow < calendarHeight && rect.top > calendarHeight;
+    
+    const top = openUpward ? rect.top - calendarHeight - 4 : rect.bottom + 4;
+    let left = rect.left;
+    
+    // Prevent left/right viewport overflow
+    if (left + calendarWidth > window.innerWidth) {
+      left = window.innerWidth - calendarWidth - 16;
+    }
+    if (left < 16) {
+      left = 16;
+    }
+    
+    setCoords({ top, left, openUpward });
+  };
 
   useEffect(() => {
-    if (value) {
-      setCurrentDate(new Date(value));
+    if (isOpen) {
+      updatePosition();
+      // Listen to scroll events on capture phase (captures scrolls inside scrollable modals)
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
     }
-  }, [value]);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [isOpen]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setFocusedDate(value ? new Date(value) : new Date());
+    }
+  }, [isOpen, value]);
+
+  // Click outside listener
+  const pickerContainerRef = useRef(null);
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+      // Ensure we don't close if clicking the button itself
+      if (buttonRef.current && buttonRef.current.contains(event.target)) return;
+      if (pickerContainerRef.current && !pickerContainerRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const formatDateLabel = (dateStr) => {
     if (!dateStr) return "Select Due Date";
@@ -124,7 +174,7 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
 
   const handleDaySelect = (dayDate) => {
     if (!dayDate) return;
-    const formatted = dayDate.toISOString().split("T")[0]; // format YYYY-MM-DD
+    const formatted = dayDate.toISOString().split("T")[0]; // YYYY-MM-DD
     onChange(formatted);
     setIsOpen(false);
   };
@@ -145,27 +195,75 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
            valDate.getFullYear() === dayDate.getFullYear();
   };
 
-  return (
-    <div className="relative w-full" ref={pickerRef}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2.5 px-4 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all cursor-pointer font-bold select-none text-left"
-      >
-        <span>{formatDateLabel(value)}</span>
-        <CalendarIcon size={14} className="text-[var(--text-muted)]" />
-      </button>
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
 
+    const handleKeyDown = (e) => {
+      let nextDate = new Date(focusedDate);
+
+      switch (e.key) {
+        case "Escape":
+          e.preventDefault();
+          setIsOpen(false);
+          break;
+        case "Enter":
+          e.preventDefault();
+          handleDaySelect(focusedDate);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          nextDate.setDate(focusedDate.getDate() + 7);
+          setFocusedDate(nextDate);
+          setCurrentDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          nextDate.setDate(focusedDate.getDate() - 7);
+          setFocusedDate(nextDate);
+          setCurrentDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          nextDate.setDate(focusedDate.getDate() - 1);
+          setFocusedDate(nextDate);
+          setCurrentDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          nextDate.setDate(focusedDate.getDate() + 1);
+          setFocusedDate(nextDate);
+          setCurrentDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, focusedDate]);
+
+  const calendarContent = (
+    <div 
+      ref={pickerContainerRef} 
+      style={{ 
+        position: "fixed", 
+        top: coords.top, 
+        left: coords.left, 
+        zIndex: 99999 
+      }}
+    >
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, scale: 0.96, y: coords.openUpward ? 8 : -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: coords.openUpward ? 8 : -8 }}
             transition={{ duration: 0.18 }}
-            className="absolute right-0 z-50 w-[270px] mt-1 bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-[#3F3F46] rounded-2xl shadow-lg p-4 select-none"
+            className="w-[270px] bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-[#3F3F46] rounded-2xl shadow-xl p-4 select-none"
           >
+            {/* Calendar Header */}
             <div className="flex items-center justify-between mb-3">
               <button
                 type="button"
@@ -186,6 +284,7 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
               </button>
             </div>
 
+            {/* Weekdays */}
             <div className="grid grid-cols-7 gap-1 text-center mb-1">
               {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
                 <span key={day} className="text-[10px] font-bold text-[var(--text-muted)] uppercase">
@@ -194,6 +293,7 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
               ))}
             </div>
 
+            {/* Days grid */}
             <div className="grid grid-cols-7 gap-1 text-center">
               {cells.map((cell, idx) => {
                 if (!cell) {
@@ -201,6 +301,9 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
                 }
                 const selected = isSelected(cell);
                 const today = isToday(cell);
+                const isFocused = focusedDate.getDate() === cell.getDate() &&
+                                 focusedDate.getMonth() === cell.getMonth() &&
+                                 focusedDate.getFullYear() === cell.getFullYear();
                 return (
                   <button
                     key={cell.getTime()}
@@ -211,6 +314,8 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
                         ? "bg-black dark:bg-[#3B82F6] text-white dark:text-[#FFFFFF]"
                         : today
                         ? "bg-zinc-100 dark:bg-[#27272A] text-black dark:text-[#3B82F6] border border-[#3B82F6]"
+                        : isFocused
+                        ? "ring-2 ring-[#3B82F6] dark:ring-offset-transparent bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-[#FFFFFF]"
                         : "bg-transparent text-zinc-800 dark:text-[#FFFFFF] hover:bg-[#F4F4F5] dark:hover:bg-[#27272A]"
                     }`}
                   >
@@ -222,6 +327,23 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+
+  return (
+    <div className="relative w-full">
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-[var(--input-bg)] border border-[var(--border-color)] rounded-xl py-2.5 px-4 text-xs text-[var(--text-main)] focus:outline-none focus:border-black dark:focus:border-white transition-all cursor-pointer font-bold select-none text-left"
+      >
+        <span>{formatDateLabel(value)}</span>
+        <CalendarIcon size={14} className="text-[var(--text-muted)]" />
+      </button>
+
+      {isOpen && createPortal(calendarContent, document.body)}
     </div>
   );
 };
