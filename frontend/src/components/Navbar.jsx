@@ -1,6 +1,6 @@
 import React from "react";
 import { useAuth } from "../auth/AuthContext";
-import { Sun, Moon, LogOut, CheckSquare, Plus, LayoutDashboard } from "lucide-react";
+import { Sun, Moon, LogOut, CheckSquare, Plus, LayoutDashboard, User } from "lucide-react";
 
 const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick, activeTab, onTabChange, onLogoutClick }) => {
   const { user } = useAuth();
