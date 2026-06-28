@@ -68,41 +68,65 @@ graph TD
 taskpilot/
 ├── backend/
 │   ├── config/
-│   │   ├── db.js                 # MongoDB Atlas mongoose connection
-│   │   └── firebase.js           # Firebase Admin SDK configuration
+│   │   ├── db.js                 # MongoDB connection & reconnect policies
+│   │   └── firebase.js           # Firebase Admin SDK initialization
 │   ├── controllers/
-│   │   └── taskController.js     # User-isolated task CRUD actions
+│   │   ├── taskController.js     # User-isolated task CRUD logic
+│   │   └── userController.js     # User session sync & verification endpoints
 │   ├── middleware/
-│   │   ├── authMiddleware.js     # Token verification route-guard
-│   │   └── errorMiddleware.js    # Express global error handler
+│   │   ├── authMiddleware.js     # Firebase ID token route guard
+│   │   └── errorMiddleware.js    # Global error & Mongo constraint mapper
 │   ├── models/
-│   │   └── Task.js               # MongoDB Mongoose Task schema
+│   │   ├── Task.js               # MongoDB Mongoose Task schema
+│   │   └── User.js               # MongoDB Mongoose User schema (UID indexed)
 │   ├── routes/
-│   │   └── taskRoutes.js         # Protected task endpoints
-│   ├── server.js                 # Express server configuration
-│   └── package.json
+│   │   ├── taskRoutes.js         # Protected task endpoints
+│   │   └── userRoutes.js         # Protected user sync endpoints
+│   ├── scripts/
+│   │   └── migrateUsers.js       # Standalone user migration utility
+│   ├── .env.example              # Backend environment template
+│   ├── package.json              # Backend dependencies (CORS, Express, Mongoose)
+│   └── server.js                 # App entry point & health check endpoints
 │
-└── frontend/
-    ├── src/
-    │   ├── auth/
-    │   │   └── AuthContext.jsx   # Authentication context & SDK handlers
-    │   ├── firebase/
-    │   │   └── firebaseConfig.js # Client-side Firebase SDK configuration
-    │   ├── components/
-    │   │   ├── Navbar.jsx        # Responsive navigation header
-    │   │   ├── ProtectedRoute.jsx# Unauthenticated redirection guard
-    │   │   ├── TaskCard.jsx      # Task detail rendering block
-    │   │   └── TaskFormModal.jsx # Unified create/edit modal form overlay
-    │   ├── pages/
-    │   │   ├── Login.jsx         # Authentication gateway page
-    │   │   └── Dashboard.jsx     # App homepage & statistics hub
-    │   ├── services/
-    │   │   └── taskService.js    # API service client with Bearer headers
-    │   ├── index.css             # Main styling system and theme variables
-    │   ├── App.jsx               # Entry-point router & theme listener
-    │   └── main.jsx              # React mounting root
-    ├── firebase.json             # Firebase deployment configurations
-    └── package.json
+├── frontend/
+│   ├── public/
+│   │   └── favicon.png           # Official TaskPilot browser tab icon
+│   ├── src/
+│   │   ├── assets/
+│   │   │   └── logo.png          # Transparent monochrome logo asset
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   │   ├── ConfirmModal.jsx # Reusable confirm actions modal
+│   │   │   │   └── ErrorState.jsx   # Fallback/retry screen for network errors
+│   │   │   ├── skeletons/
+│   │   │   │   └── SkeletonLoaders.jsx # Premium loading states
+│   │   │   ├── ProtectedRoute.jsx   # Client auth-state route guard & splash
+│   │   │   ├── TaskCard.jsx         # Memoized Task display card
+│   │   │   └── TaskFormModal.jsx    # Custom dropdown & Portal date-picker modal
+│   │   ├── contexts/
+│   │   │   ├── AuthContext.jsx   # Axios interceptor & Firebase credentials context
+│   │   │   └── ToastContext.jsx  # Notification overlays
+│   │   ├── firebase/
+│   │   │   └── firebaseConfig.js # Client-side Firebase SDK configuration
+│   │   ├── layouts/
+│   │   │   └── SaaSLayout.jsx    # Collapsible sidebar layout
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx     # Analytics, counters, list search & sort controls
+│   │   │   ├── Login.jsx         # Centered branding login & signup cards
+│   │   │   └── ProfileSettings.jsx # Security settings & initials avatar card
+│   │   ├── services/
+│   │   │   └── taskService.js    # Axios CRUD requests to backend
+│   │   ├── index.css             # Tailwind v4 directives & custom theme variables
+│   │   └── main.jsx              # React app entry point
+│   ├── .env.example              # Client environment template
+│   ├── .firebaserc               # Firebase Hosting target project definition
+│   ├── firebase.json             # Firebase static files server configuration
+│   ├── index.html                # App root HTML index
+│   ├── package.json              # Optimized dependencies (Vite, Tailwind, React)
+│   └── vite.config.js            # Vite build parameters
+│
+├── README.md                     # Project overview & startup instructions
+└── walkthrough.md                # Deployment and refactoring logs
 ```
 
 ---
