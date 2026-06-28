@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "dummy-api-key",
@@ -14,14 +15,16 @@ const isFirebaseConfigured = !!(import.meta.env.VITE_FIREBASE_API_KEY && import.
 
 let app;
 let auth;
+let db;
 let googleProvider;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
+  db = getFirestore(app);
   googleProvider = new GoogleAuthProvider();
 } catch (error) {
   console.error("Firebase client initialization error:", error);
 }
 
-export { auth, googleProvider, isFirebaseConfigured };
+export { auth, db, googleProvider, isFirebaseConfigured };
