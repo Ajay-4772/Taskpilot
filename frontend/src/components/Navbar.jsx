@@ -7,7 +7,23 @@ const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick, activeTab, onTabChang
 
   const getInitials = (name) => {
     if (!name) return "U";
-    return name.charAt(0).toUpperCase();
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
+
+  const getAvatarColor = (name) => {
+    if (!name) return "#6366f1";
+    const colors = [
+      "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4",
+      "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", "#ec4899"
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
   };
 
   return (
@@ -83,25 +99,14 @@ const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick, activeTab, onTabChang
             className="flex items-center cursor-pointer border-0 bg-transparent p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40"
             title="Profile Settings"
           >
-            {user?.photoURL ? (
-              <img 
-                src={user.photoURL} 
-                alt={user.displayName || "User"} 
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border shadow-sm transition-all ${
-                  activeTab === "profile" ? "border-primary ring-2 ring-primary/20" : "border-[var(--border-color)]"
-                }`}
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div 
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-md transition-all ${
-                  activeTab === "profile" ? "ring-2 ring-primary/45 scale-105" : ""
-                }`}
-                style={{ backgroundColor: "#7C5CFC" }}
-              >
-                {getInitials(user?.displayName || user?.email)}
-              </div>
-            )}
+            <div 
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-md transition-all ${
+                activeTab === "profile" ? "ring-2 ring-primary/45 scale-105" : ""
+              }`}
+              style={{ backgroundColor: getAvatarColor(user?.displayName || user?.email) }}
+            >
+              {getInitials(user?.displayName || user?.email)}
+            </div>
           </button>
 
           {/* Logout Action */}

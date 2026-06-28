@@ -21,7 +21,23 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
 
   const getInitials = (name) => {
     if (!name) return "U";
-    return name.charAt(0).toUpperCase();
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
+
+  const getAvatarColor = (name) => {
+    if (!name) return "#6366f1";
+    const colors = [
+      "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4",
+      "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", "#ec4899"
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
   };
 
   const navItems = [
@@ -78,12 +94,11 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
         {/* User initials info card */}
         {user && (
           <div className={`flex items-center ${isCollapsed ? "justify-center w-full" : "gap-3 px-2 w-full"}`}>
-            <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden select-none">
-              {user.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName} className="w-full h-full object-cover" />
-              ) : (
-                <span>{getInitials(user.displayName || user.email)}</span>
-              )}
+            <div 
+              className="w-8 h-8 rounded-full border border-zinc-700/60 dark:border-zinc-800 flex items-center justify-center text-[10px] font-extrabold text-white shrink-0 overflow-hidden select-none"
+              style={{ backgroundColor: getAvatarColor(user.displayName || user.email) }}
+            >
+              {getInitials(user.displayName || user.email)}
             </div>
             {!isCollapsed && (
               <div className="min-w-0 flex-grow">

@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
-import { auth, storage } from "../firebase/firebaseConfig";
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { auth } from "../firebase/firebaseConfig";
 import { getTasks } from "../services/taskService";
-import { User, Mail, Lock, Calendar, Trash2, Camera, ShieldAlert, Award, FileText, CheckCircle2, Clock } from "lucide-react";
+import { User, Mail, Lock, Calendar, ShieldAlert, Award, FileText, CheckCircle2, Clock } from "lucide-react";
 import ConfirmModal from "../components/common/ConfirmModal";
 
 const ProfileSettings = () => {
@@ -15,11 +14,6 @@ const ProfileSettings = () => {
   const [name, setName] = useState(user?.displayName || "");
   const [isNameEditing, setIsNameEditing] = useState(false);
   const [nameLoading, setNameLoading] = useState(false);
-
-  // File Upload State
-  const [photoLoading, setPhotoLoading] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(null);
 
   // Change Email Modal State
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -61,7 +55,6 @@ const ProfileSettings = () => {
   useEffect(() => {
     if (user) {
       setName(user.displayName || "");
-      setPhotoPreview(user.photoURL || null);
     }
   }, [user]);
 
@@ -98,154 +91,35 @@ const ProfileSettings = () => {
     });
   };
 
+  // Upgraded Initials Generator supporting 2 characters
   const getInitials = (nameStr) => {
     if (!nameStr) return "U";
-    return nameStr.charAt(0).toUpperCase();
+    const parts = nameStr.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
   };
 
-  // HTML5 Canvas client-side photo compression
-  const compressImage = (file) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target.result;
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 400;
-          const MAX_HEIGHT = 400;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob((blob) => {
-            resolve(blob);
-          }, "image/jpeg", 0.8);
-        };
-      };
-    });
-  };
-
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Image exceeds 5 MB.", "error");
-      return;
+  // Hashing helper to return a consistent visual theme color derived from display name
+  const getAvatarColor = (nameStr) => {
+    if (!nameStr) return "#6366f1"; // Default Indigo
+    const colors = [
+      "#ef4444", // Red
+      "#f97316", // Orange
+      "#f59e0b", // Amber
+      "#10b981", // Emerald
+      "#06b6d4", // Cyan
+      "#3b82f6", // Blue
+      "#6366f1", // Indigo
+      "#8b5cf6", // Violet
+      "#d946ef", // Fuchsia
+      "#ec4899"  // Pink
+    ];
+    let hash = 0;
+    for (let i = 0; i < nameStr.length; i++) {
+      hash = nameStr.charCodeAt(i) + ((hash << 5) - hash);
     }
-
-    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-    if (!allowed.includes(file.type)) {
-      showToast("Unsupported image format.", "error");
-      return;
-    }
-
-    setPhotoLoading(true);
-    setUploadProgress(0);
-
-    try {
-      const compressedBlob = await compressImage(file);
-      const storageRef = ref(storage, `profile_pictures/${user.uid}`);
-      const uploadTask = uploadBytesResumable(storageRef, compressedBlob);
-
-      // Timeout handler after 8 seconds
-      const timeoutId = setTimeout(() => {
-        uploadTask.cancel();
-        setPhotoLoading(false);
-        setUploadProgress(null);
-        showToast("Upload failed. Please try again.", "error");
-      }, 8000);
-
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          setUploadProgress(progress);
-        },
-        (error) => {
-          clearTimeout(timeoutId);
-          setPhotoLoading(false);
-          setUploadProgress(null);
-          if (error.code === "storage/canceled") {
-            showToast("Network connection lost.", "error");
-            return;
-          }
-          console.error(error);
-          showToast("Upload failed. Please try again.", "error");
-        },
-        async () => {
-          clearTimeout(timeoutId);
-          try {
-            const downloadURL = await getDownloadURL(storageRef);
-            await updateUserProfile(user.displayName, downloadURL);
-            setPhotoPreview(downloadURL);
-            showToast("Profile photo updated successfully", "success");
-          } catch (err) {
-            console.error(err);
-            showToast("Upload failed. Please try again.", "error");
-          } finally {
-            setPhotoLoading(false);
-            setUploadProgress(null);
-          }
-        }
-      );
-    } catch (error) {
-      console.error(error);
-      showToast("Upload failed. Please try again.", "error");
-      setPhotoLoading(false);
-      setUploadProgress(null);
-    }
-  };
-
-  const triggerRemovePhotoConfirm = () => {
-    if (!photoPreview) return;
-    setConfirmModal({
-      isOpen: true,
-      title: "Remove Profile Picture?",
-      message: "Are you sure you want to delete your profile photo? Your avatar will reset to your workspace initials.",
-      type: "danger",
-      confirmText: "Delete Photo",
-      onConfirm: handleRemovePhoto
-    });
-  };
-
-  const handleRemovePhoto = async () => {
-    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-    setPhotoLoading(true);
-    try {
-      const storageRef = ref(storage, `profile_pictures/${user.uid}`);
-      try {
-        await deleteObject(storageRef);
-      } catch (err) {
-        console.warn("Storage item not found, resetting URL directly.", err);
-      }
-      await updateUserProfile(user.displayName, "");
-      setPhotoPreview(null);
-      showToast("Profile picture removed successfully.", "info");
-    } catch (error) {
-      console.error(error);
-      showToast("Failed to remove profile picture.", "error");
-    } finally {
-      setPhotoLoading(false);
-    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
   };
 
   const handleUpdateName = async (e) => {
@@ -257,7 +131,7 @@ const ProfileSettings = () => {
     
     setNameLoading(true);
     try {
-      await updateUserProfile(name.trim(), photoPreview || "");
+      await updateUserProfile(name.trim(), "");
       showToast("Display name updated successfully!", "success");
       setIsNameEditing(false);
     } catch (err) {
@@ -313,6 +187,8 @@ const ProfileSettings = () => {
     }
   };
 
+  const displayName = user?.displayName || user?.email || "Workspace Member";
+
   return (
     <div className="w-full max-w-5xl mx-auto px-6 py-8 flex-grow select-none">
       {/* Page Title */}
@@ -323,35 +199,18 @@ const ProfileSettings = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left pane: Photo Upload & Info summary */}
+        {/* Left pane: Consistent Colored Initials Avatar & Info summary */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-[16px] p-6 shadow-sm flex flex-col items-center text-center">
             
-            {/* Uploadable profile picture bubble */}
-            <div className="relative group mb-4">
-              <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-3xl font-extrabold shadow-md bg-zinc-950 border border-zinc-800 select-none relative">
-                {photoPreview ? (
-                  <img src={photoPreview} alt={user?.displayName} className="w-full h-full object-cover" />
-                ) : (
-                  <span>{getInitials(user?.displayName || user?.email)}</span>
-                )}
-                
-                {/* Photo loading overlay spinner */}
-                {photoLoading && (
-                  <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 p-1">
-                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mb-1" />
-                    <span className="text-[8px] font-extrabold text-white tracking-wide">
-                      {uploadProgress !== null ? `${uploadProgress}%` : "Uploading..."}
-                    </span>
-                  </div>
-                )}
+            {/* Hashed background Initials avatar */}
+            <div className="mb-4">
+              <div 
+                className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-extrabold shadow-md select-none border border-zinc-200 dark:border-zinc-800"
+                style={{ backgroundColor: getAvatarColor(displayName) }}
+              >
+                {getInitials(displayName)}
               </div>
-
-              {/* Upload button hover mask */}
-              <label className="absolute bottom-0 right-0 p-2 bg-black text-white rounded-full border border-zinc-800 cursor-pointer shadow-md hover:scale-105 transition-all flex items-center justify-center">
-                <Camera size={13} />
-                <input type="file" onChange={handlePhotoChange} className="hidden" accept="image/png, image/jpeg, image/webp" disabled={photoLoading} />
-              </label>
             </div>
 
             <h3 className="text-sm font-bold text-[var(--text-main)] mb-0.5">
@@ -361,18 +220,7 @@ const ProfileSettings = () => {
               {user?.email}
             </p>
 
-            <div className="flex gap-2 w-full justify-center">
-              <button
-                type="button"
-                onClick={triggerRemovePhotoConfirm}
-                className="px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-950/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/15 text-[9px] font-bold transition-all cursor-pointer bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!photoPreview || photoLoading}
-              >
-                Remove Photo
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1.5 py-1.5 px-3 bg-zinc-50 dark:bg-zinc-900 border border-[var(--border-color)] rounded-lg text-[9px] text-[var(--text-muted)] font-bold mt-6 w-full justify-center">
+            <div className="flex items-center gap-1.5 py-1.5 px-3 bg-zinc-50 dark:bg-zinc-900 border border-[var(--border-color)] rounded-lg text-[9px] text-[var(--text-muted)] font-bold mt-2 w-full justify-center">
               <Calendar size={11} />
               <span>Member Since: {getCreationDate()}</span>
             </div>
