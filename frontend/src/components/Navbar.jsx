@@ -1,6 +1,7 @@
 import React from "react";
 import { useAuth } from "../auth/AuthContext";
-import { Sun, Moon, LogOut, CheckSquare, Plus, LayoutDashboard, User } from "lucide-react";
+import { Sun, Moon, LogOut, Plus, LayoutDashboard, User } from "lucide-react";
+import logo from "../assets/logo.png";
 
 const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick, activeTab, onTabChange, onLogoutClick }) => {
   const { user } = useAuth();
@@ -35,9 +36,11 @@ const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick, activeTab, onTabChang
           className="flex items-center gap-2 shrink-0 cursor-pointer"
           onClick={() => onTabChange("dashboard")}
         >
-          <div className="flex items-center justify-center bg-primary text-white rounded-xl shadow-md shadow-primary/20 w-8 h-8 sm:w-9 sm:h-9">
-            <CheckSquare size={16} />
-          </div>
+          <img 
+            src={logo} 
+            alt="TaskPilot Logo" 
+            className="w-8 h-8 sm:w-9 sm:h-9 object-contain dark:invert shrink-0" 
+          />
           <span className="text-sm sm:text-lg font-bold tracking-tight text-[var(--text-main)] hidden min-[400px]:block">
             TaskFlow
           </span>

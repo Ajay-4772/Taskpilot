@@ -3,8 +3,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { auth } from "../firebase/firebaseConfig";
 import { sendPasswordResetEmail, confirmPasswordReset } from "firebase/auth";
-import { CheckSquare, Lock, Eye, EyeOff, Mail, User, ArrowRight, Check, X } from "lucide-react";
+import { Lock, Eye, EyeOff, Mail, User, ArrowRight, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import logo from "../assets/logo.png";
 
 const Login = () => {
   const { loginWithGoogle, loginWithEmail, signupWithEmail } = useAuth();
@@ -229,12 +230,15 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4 relative font-sans text-zinc-900 select-none">
       
-      {/* Floating Header */}
-      <div className="absolute top-8 flex items-center gap-2">
-        <div className="flex items-center justify-center bg-white text-black rounded-lg w-8 h-8 font-bold">
-          <CheckSquare size={16} />
-        </div>
-        <span className="text-sm font-bold text-white tracking-wide">TaskFlow</span>
+      {/* Centered logo branding */}
+      <div className="flex flex-col items-center gap-3 mb-6 text-center">
+        <img 
+          src={logo} 
+          alt="TaskPilot Logo" 
+          className="w-14 h-14 object-contain dark:invert" 
+        />
+        <h1 className="text-xl font-bold tracking-tight text-white mt-1">Welcome to TaskPilot</h1>
+        <p className="text-[10px] text-zinc-400 font-medium">Manage your tasks smarter.</p>
       </div>
 
       <AnimatePresence mode="wait">

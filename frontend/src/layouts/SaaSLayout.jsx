@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { LayoutDashboard, User, Sun, Moon, LogOut, Menu, X, CheckSquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, User, Sun, Moon, LogOut, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import logo from "../assets/logo.png";
 
 const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode, onToggleTheme }) => {
   const { user } = useAuth();
@@ -48,17 +49,39 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-900 text-zinc-50 select-none relative">
       {/* Sidebar Header Logo & Collapse/Expand Button */}
-      <div className={`h-[70px] px-5 border-b border-zinc-900 flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
-        <button 
-          type="button" 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-zinc-400 hover:text-white p-1.5 hover:bg-zinc-900 rounded-lg transition-all cursor-pointer border-0 bg-transparent flex items-center justify-center shrink-0"
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          <Menu size={18} />
-        </button>
-        {!isCollapsed && (
-          <span className="text-base font-bold tracking-tight text-white select-none">TaskFlow</span>
+      <div className={`h-[70px] px-4 border-b border-zinc-900 flex items-center ${isCollapsed ? "justify-center" : "justify-between w-full"} gap-2`}>
+        {isCollapsed ? (
+          <button 
+            type="button" 
+            onClick={() => setIsCollapsed(false)}
+            className="w-10 h-10 flex items-center justify-center bg-transparent border-0 cursor-pointer p-0 select-none hover:scale-105 transition-transform shrink-0"
+            title="Expand Sidebar"
+          >
+            <img 
+              src={logo} 
+              alt="TaskPilot Logo" 
+              className="w-8 h-8 object-contain dark:invert" 
+            />
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              <img 
+                src={logo} 
+                alt="TaskPilot Logo" 
+                className="w-8 h-8 object-contain dark:invert shrink-0" 
+              />
+              <span className="text-sm font-bold tracking-tight text-white select-none truncate">TaskFlow</span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setIsCollapsed(true)}
+              className="text-zinc-400 hover:text-white p-1.5 hover:bg-zinc-900 rounded-lg transition-all cursor-pointer border-0 bg-transparent flex items-center justify-center shrink-0"
+              title="Collapse Sidebar"
+            >
+              <Menu size={16} />
+            </button>
+          </>
         )}
       </div>
 
@@ -145,10 +168,12 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
       {/* Mobile Menu Header */}
       <header className="h-[60px] border-b border-[var(--border-color)] bg-[var(--bg-card)] px-6 flex md:hidden items-center justify-between shrink-0 sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center bg-zinc-950 dark:bg-white text-white dark:text-black rounded-lg w-7 h-7 font-bold">
-            <CheckSquare size={14} />
-          </div>
-          <span className="text-sm font-bold text-[var(--text-main)]">TaskFlow</span>
+          <img 
+            src={logo} 
+            alt="TaskPilot Logo" 
+            className="w-7 h-7 object-contain dark:invert" 
+          />
+          <span className="text-sm font-bold text-[var(--text-main)] select-none">TaskFlow</span>
         </div>
         <button
           type="button"
