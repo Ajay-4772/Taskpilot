@@ -43,20 +43,14 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    // Make database sync resilient and non-blocking
-    try {
-      const userDocRef = doc(db, "users", firebaseUser.uid);
-      const userDocSnap = await getDoc(userDocRef);
 
-      if (!userDocSnap.exists()) {
-        await setDoc(userDocRef, {
-          name: displayName,
-          email: firebaseUser.email,
-          createdAt: new Date(firebaseUser.metadata?.creationTime || Date.now()).toISOString()
-        });
-      }
-    } catch (dbError) {
-      console.warn("Firestore user document sync bypassed (client offline or permissions limit):", dbError);
+
+    if (!userDocSnap.exists()) {
+      await setDoc(userDocRef, {
+        name: displayName,
+        email: firebaseUser.email,
+        createdAt: new Date(firebaseUser.metadata?.creationTime || Date.now()).toISOString()
+      });
     }
 
     setUser(userDetails);
@@ -133,12 +127,8 @@ export const AuthProvider = ({ children }) => {
     if (!auth.currentUser) throw new Error("No authenticated user");
     await updateProfile(auth.currentUser, { displayName });
     
-    try {
-      const userDocRef = doc(db, "users", auth.currentUser.uid);
-      await setDoc(userDocRef, { name: displayName }, { merge: true });
-    } catch (e) {
-      console.warn("Bypassed Firestore profile name sync:", e);
-    }
+    const userDocRef = doc(db, "users", auth.currentUser.uid);
+    await setDoc(userDocRef, { name: displayName }, { merge: true });
 
     return await syncUserDoc(auth.currentUser, displayName);
   };
@@ -154,12 +144,8 @@ export const AuthProvider = ({ children }) => {
       await updateEmail(auth.currentUser, newEmail);
     }
 
-    try {
-      const userDocRef = doc(db, "users", auth.currentUser.uid);
-      await setDoc(userDocRef, { email: newEmail }, { merge: true });
-    } catch (e) {
-      console.warn("Bypassed Firestore profile email sync:", e);
-    }
+    const userDocRef = doc(db, "users", auth.currentUser.uid);
+    await setDoc(userDocRef, { email: newEmail }, { merge: true });
   };
 
   const updateUserPassword = async (currentPassword, newPassword) => {
