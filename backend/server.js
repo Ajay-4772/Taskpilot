@@ -13,10 +13,22 @@ connectDB();
 const app = express();
 app.use(cors());
 
+const mongoose = require("mongoose");
+
 app.use(express.json());
 
 app.use("/tasks", taskRoutes);
 app.use("/users", userRoutes);
+
+app.get(["/health", "/api/health"], (req, res) => {
+  const mongoStatus = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
+  res.status(200).json({
+    status: "ok",
+    mongodb: mongoStatus,
+    server: "running",
+    uptime: process.uptime()
+  });
+});
 
 app.get("/", (req, res) => {
   res.send("TaskPilot API is running...");

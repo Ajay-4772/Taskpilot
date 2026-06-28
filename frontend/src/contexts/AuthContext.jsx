@@ -29,10 +29,37 @@ export const getBaseUrl = () => {
   return "https://taskpilot-api-c3s3.onrender.com";
 };
 
+// Setup Axios request interceptor to dynamically append fresh Firebase ID token on every request
+axios.interceptors.request.use(
+  async (config) => {
+    try {
+      if (auth && auth.currentUser) {
+        const idToken = await auth.currentUser.getIdToken();
+        config.headers["Authorization"] = `Bearer ${idToken}`;
+      } else {
+        const localToken = localStorage.getItem("taskflow_token");
+        if (localToken) {
+          config.headers["Authorization"] = `Bearer ${localToken}`;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not inject Firebase ID token in interceptor:", e);
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const localUser = localStorage.getItem("taskflow_user");
+    return localUser ? JSON.parse(localUser) : null;
+  });
+  const [token, setToken] = useState(() => localStorage.getItem("taskflow_token"));
+  const [loading, setLoading] = useState(() => {
+    // If we have cached credentials, initialize immediately without blocking loader screens
+    return !localStorage.getItem("taskflow_token");
+  });
   const [authError, setAuthError] = useState(null);
 
   // Synchronize authenticated Firebase Auth user with MongoDB
@@ -49,7 +76,7 @@ export const AuthProvider = ({ children }) => {
         email: firebaseUser.email,
         photoURL: firebaseUser.photoURL || "" 
       },
-      { timeout: 10000 }
+      { timeout: 8000 } // 8 seconds timeout
     );
 
     const dbUser = response.data;
@@ -69,27 +96,46 @@ export const AuthProvider = ({ children }) => {
   const retrySync = async () => {
     setAuthError(null);
     setLoading(true);
-    if (auth.currentUser) {
-      try {
+    try {
+      // Test server health
+      await axios.get(`${getBaseUrl()}/health`, { timeout: 5000 });
+      
+      if (auth.currentUser) {
         const idToken = await auth.currentUser.getIdToken(true);
         setToken(idToken);
-        axios.defaults.headers.common["Authorization"] = `Bearer ${idToken}`;
         await syncUserDoc(auth.currentUser);
-      } catch (err) {
-        console.error("Retry sync failed:", err);
-        setAuthError({
-          type: "server",
-          message: "Unable to reach backend server. Please verify the API is running."
-        });
-      } finally {
-        setLoading(false);
       }
-    } else {
+      setLoading(false);
+    } catch (err) {
+      console.error("Retry connection failed:", err);
+      setAuthError({
+        type: "server",
+        message: "Unable to connect to the server. Please try again."
+      });
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Run startup health check to verify backend availability before loading data
+    const verifyBackendHealth = async () => {
+      try {
+        await axios.get(`${getBaseUrl()}/health`, { timeout: 5000 });
+      } catch (err) {
+        console.warn("Backend connectivity check failed on startup:", err.message);
+        // Only set blocking connection error if we are logged in (requires backend transactions)
+        if (localStorage.getItem("taskflow_token")) {
+          setAuthError({
+            type: "server",
+            message: "Unable to connect to the server. Please try again."
+          });
+          setLoading(false);
+        }
+      }
+    };
+
+    verifyBackendHealth();
+
     if (isFirebaseConfigured && auth) {
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
@@ -97,35 +143,34 @@ export const AuthProvider = ({ children }) => {
             const idToken = await firebaseUser.getIdToken();
             setToken(idToken);
             localStorage.setItem("taskflow_token", idToken);
-            axios.defaults.headers.common["Authorization"] = `Bearer ${idToken}`;
+            
+            // Set loading to false early if session cache exists to optimize rendering
+            if (localStorage.getItem("taskflow_user")) {
+              setLoading(false);
+            }
             
             await syncUserDoc(firebaseUser);
             setAuthError(null);
           } catch (error) {
             console.error("Error verifying authenticated user session:", error);
-            setAuthError({
-              type: "server",
-              message: "Connection failed. Backend server timed out or is unavailable."
-            });
+            // Ignore expired token warnings on startup since interceptor handles it
+            if (error.code !== "auth/id-token-expired") {
+              setAuthError({
+                type: "server",
+                message: "Connection failed. Backend server timed out or is unavailable."
+              });
+            }
           }
         } else {
           setUser(null);
           setToken(null);
           localStorage.removeItem("taskflow_user");
           localStorage.removeItem("taskflow_token");
-          delete axios.defaults.headers.common["Authorization"];
         }
         setLoading(false);
       });
       return unsubscribe;
     } else {
-      const localUser = localStorage.getItem("taskflow_user");
-      const localToken = localStorage.getItem("taskflow_token");
-      if (localUser && localToken) {
-        setUser(JSON.parse(localUser));
-        setToken(localToken);
-        axios.defaults.headers.common["Authorization"] = `Bearer ${localToken}`;
-      }
       setLoading(false);
     }
   }, []);
@@ -137,7 +182,6 @@ export const AuthProvider = ({ children }) => {
     const result = await signInWithPopup(auth, googleProvider);
     const idToken = await result.user.getIdToken();
     setToken(idToken);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${idToken}`;
     await syncUserDoc(result.user);
     return result.user;
   };
@@ -149,7 +193,6 @@ export const AuthProvider = ({ children }) => {
     const result = await signInWithEmailAndPassword(auth, email, password);
     const idToken = await result.user.getIdToken();
     setToken(idToken);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${idToken}`;
     await syncUserDoc(result.user);
     return result.user;
   };
@@ -167,7 +210,6 @@ export const AuthProvider = ({ children }) => {
     }
     const idToken = await result.user.getIdToken();
     setToken(idToken);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${idToken}`;
     await syncUserDoc(result.user, name);
     return result.user;
   };
@@ -240,7 +282,6 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       localStorage.removeItem("taskflow_user");
       localStorage.removeItem("taskflow_token");
-      delete axios.defaults.headers.common["Authorization"];
       setLoading(false);
     }
   };

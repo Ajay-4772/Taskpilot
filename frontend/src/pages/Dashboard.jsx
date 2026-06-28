@@ -10,6 +10,25 @@ import { StatsCardSkeleton, TaskCardSkeleton } from "../components/skeletons/Ske
 import { Search, Plus, Inbox, ArrowUpDown, ChevronDown, CheckCircle2, Circle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const getErrorMessage = (err, defaultMsg = "Unable to process task request.") => {
+  if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+    return "Network timeout occurred. Please try again.";
+  }
+  if (!err.response) {
+    return "Database connection failed. Please check your network.";
+  }
+  if (err.response.status === 401) {
+    return "Authentication expired. Please reload or sign in again.";
+  }
+  if (err.response.status === 400) {
+    return err.response.data?.message || "Validation failed: Please check inputs.";
+  }
+  if (err.response.status === 404) {
+    return "Task not found or unauthorized.";
+  }
+  return err.response.data?.message || defaultMsg;
+};
+
 const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) => {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -47,7 +66,7 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
       console.error("Error loading tasks:", err);
       setError({
         type: "server",
-        message: "Failed to connect to database. Please check your network and retry."
+        message: getErrorMessage(err, "Failed to connect to database. Please check your network and retry.")
       });
     } finally {
       setLoading(false);
@@ -91,7 +110,7 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
       fetchTasks();
     } catch (err) {
       console.error(err);
-      showToast("Unable to update task.", "error");
+      showToast(getErrorMessage(err, "Unable to save task."), "error");
       fetchTasks();
     }
   };
@@ -116,7 +135,7 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
       fetchTasks();
     } catch (err) {
       console.error(err);
-      showToast("Unable to update task.", "error");
+      showToast(getErrorMessage(err, "Unable to complete task."), "error");
       fetchTasks();
     }
   };
@@ -141,7 +160,7 @@ const Dashboard = ({ refreshTrigger, onAddTaskTrigger, setOnAddTaskTrigger }) =>
       fetchTasks();
     } catch (err) {
       console.error(err);
-      showToast("Unable to delete task.", "error");
+      showToast(getErrorMessage(err, "Unable to delete task."), "error");
       fetchTasks();
     }
   };

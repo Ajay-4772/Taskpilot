@@ -31,37 +31,20 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-900 text-zinc-50 select-none relative">
-      {/* Sidebar Header Logo */}
-      <div className={`h-[70px] px-4 border-b border-zinc-900 flex items-center ${isCollapsed ? "justify-center" : "justify-between"} gap-2`}>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center bg-white text-black rounded-lg w-8 h-8 font-bold shrink-0">
-            <CheckSquare size={16} />
-          </div>
-          {!isCollapsed && <span className="text-base font-bold tracking-tight text-white">TaskFlow</span>}
-        </div>
-        {!isCollapsed && (
-          <button 
-            type="button" 
-            onClick={() => setIsCollapsed(true)}
-            className="text-zinc-400 hover:text-white p-1 hover:bg-zinc-900 rounded transition-all cursor-pointer border-0 bg-transparent flex items-center justify-center"
-            title="Collapse Sidebar"
-          >
-            <ChevronLeft size={16} />
-          </button>
-        )}
-      </div>
-
-      {/* Floating expand chevron for collapsed state */}
-      {isCollapsed && (
+      {/* Sidebar Header Logo & Collapse/Expand Button */}
+      <div className={`h-[70px] px-5 border-b border-zinc-900 flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
         <button 
           type="button" 
-          onClick={() => setIsCollapsed(false)}
-          className="absolute -right-3 top-[22px] w-6 h-6 rounded-full bg-zinc-950 border border-zinc-850 text-zinc-450 hover:text-white flex items-center justify-center transition-all cursor-pointer z-50 shadow-md"
-          title="Expand Sidebar"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="text-zinc-400 hover:text-white p-1.5 hover:bg-zinc-900 rounded-lg transition-all cursor-pointer border-0 bg-transparent flex items-center justify-center shrink-0"
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          <ChevronRight size={12} />
+          <Menu size={18} />
         </button>
-      )}
+        {!isCollapsed && (
+          <span className="text-base font-bold tracking-tight text-white select-none">TaskFlow</span>
+        )}
+      </div>
 
       {/* Navigation Links */}
       <div className="flex-grow py-6 px-3 space-y-1.5">
