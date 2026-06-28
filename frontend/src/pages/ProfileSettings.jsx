@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { auth, storage } from "../firebase/firebaseConfig";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { getTasks } from "../services/taskService";
 import { User, Mail, Lock, Calendar, Trash2, Camera, ShieldAlert, Award, FileText, CheckCircle2, Clock } from "lucide-react";
 import ConfirmModal from "../components/common/ConfirmModal";
@@ -19,6 +19,7 @@ const ProfileSettings = () => {
   // File Upload State
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   // Change Email Modal State
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -147,31 +148,70 @@ const ProfileSettings = () => {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      showToast("File size exceeds 5MB limit.", "error");
+      showToast("Image exceeds 5 MB.", "error");
       return;
     }
 
-    const allowed = ["image/png", "image/jpeg", "image/webp"];
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
     if (!allowed.includes(file.type)) {
-      showToast("Unsupported file format. Please upload PNG, JPEG, or WEBP.", "error");
+      showToast("Unsupported image format.", "error");
       return;
     }
 
     setPhotoLoading(true);
+    setUploadProgress(0);
+
     try {
       const compressedBlob = await compressImage(file);
       const storageRef = ref(storage, `profile_pictures/${user.uid}`);
-      await uploadBytes(storageRef, compressedBlob);
-      const downloadURL = await getDownloadURL(storageRef);
+      const uploadTask = uploadBytesResumable(storageRef, compressedBlob);
 
-      await updateUserProfile(user.displayName, downloadURL);
-      setPhotoPreview(downloadURL);
-      showToast("Profile picture updated successfully!", "success");
+      // Timeout handler after 8 seconds
+      const timeoutId = setTimeout(() => {
+        uploadTask.cancel();
+        setPhotoLoading(false);
+        setUploadProgress(null);
+        showToast("Upload failed. Please try again.", "error");
+      }, 8000);
+
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          setUploadProgress(progress);
+        },
+        (error) => {
+          clearTimeout(timeoutId);
+          setPhotoLoading(false);
+          setUploadProgress(null);
+          if (error.code === "storage/canceled") {
+            showToast("Network connection lost.", "error");
+            return;
+          }
+          console.error(error);
+          showToast("Upload failed. Please try again.", "error");
+        },
+        async () => {
+          clearTimeout(timeoutId);
+          try {
+            const downloadURL = await getDownloadURL(storageRef);
+            await updateUserProfile(user.displayName, downloadURL);
+            setPhotoPreview(downloadURL);
+            showToast("Profile photo updated successfully", "success");
+          } catch (err) {
+            console.error(err);
+            showToast("Upload failed. Please try again.", "error");
+          } finally {
+            setPhotoLoading(false);
+            setUploadProgress(null);
+          }
+        }
+      );
     } catch (error) {
       console.error(error);
-      showToast("Failed to upload profile picture.", "error");
-    } finally {
+      showToast("Upload failed. Please try again.", "error");
       setPhotoLoading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -298,8 +338,11 @@ const ProfileSettings = () => {
                 
                 {/* Photo loading overlay spinner */}
                 {photoLoading && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                    <span className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10 p-1">
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mb-1" />
+                    <span className="text-[8px] font-extrabold text-white tracking-wide">
+                      {uploadProgress !== null ? `${uploadProgress}%` : "Uploading..."}
+                    </span>
                   </div>
                 )}
               </div>

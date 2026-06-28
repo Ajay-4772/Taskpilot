@@ -78,8 +78,12 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
         {/* User initials info card */}
         {user && (
           <div className={`flex items-center ${isCollapsed ? "justify-center w-full" : "gap-3 px-2 w-full"}`}>
-            <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
-              {getInitials(user.displayName || user.email)}
+            <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden select-none">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt={user.displayName} className="w-full h-full object-cover" />
+              ) : (
+                <span>{getInitials(user.displayName || user.email)}</span>
+              )}
             </div>
             {!isCollapsed && (
               <div className="min-w-0 flex-grow">
