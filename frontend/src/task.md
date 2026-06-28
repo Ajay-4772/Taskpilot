@@ -1,0 +1,30 @@
+# TaskFlow Overhaul Todo Checklist
+
+- `[x]` Update `firebaseConfig.js` to initialize Firestore (`db`) (DEPRECATED - REMOVED FIRESTORE)
+- `[x]` Reorganize and update Contexts
+  - `[x]` Create `src/contexts/AuthContext.jsx` (connected exclusively to Express/MongoDB backend APIs)
+  - `[x]` Create `src/contexts/ToastContext.jsx` (minimalist monochrome toasts)
+- `[x]` Create `src/services/taskService.js` (refactored to Axios REST queries to MongoDB backend)
+- `[x]` Create Reusable Components
+  - `[x]` Create `src/components/common/ConfirmModal.jsx` (reusable animations)
+  - `[x]` Create `src/components/skeletons/SkeletonLoaders.jsx` (monochrome skeletons)
+- `[x]` Create collapsible layout: `src/layouts/SaaSLayout.jsx`
+- `[x]` Overhaul auth page: `src/pages/Login.jsx` (B&W card, strength bar, actual forgot password links)
+- `[x]` Overhaul profile settings: `src/pages/ProfileSettings.jsx` (monochrome inputs, email change re-auth via MongoDB)
+- `[x]` Overhaul task components:
+  - `[x]` Create `src/components/TaskCard.jsx` (monochrome styles, React.memo)
+  - `[x]` Create `src/components/TaskFormModal.jsx` (outline inputs, character counters, floating labels)
+- `[x]` Overhaul dashboard: `src/pages/Dashboard.jsx` (sidebar-aware content, animated SVG charts, sorting options)
+- `[x]` Update App entry points:
+  - `[x]` Update `src/index.css` (monochrome ChatGPT theme variables)
+  - `[x]` Update `src/App.jsx` (SaaSLayout wireup, lazy load suspense)
+  - `[x]` Update `src/main.jsx` (contexts import adjustments)
+- `[x]` Run build verification (`npm run build` - compiled in 1.59s!)
+- `[x]` Remove Firestore Completely (zero dependencies remaining, saved ~480 kB bundle size!)
+- `[x]` Migrate User metadata sync to MongoDB (`POST /users/sync`, `GET /users/me`, `PUT /users/profile`, `PUT /users/email`)
+- `[x]` Add request timeout handling of 10s with custom Retry ErrorState screen
+- `[x]` Implement ChatGPT-style collapsible sidebar with localStorage persistence
+- `[x]` Fix task completion stale closure bug & ensure stats update immediately
+- `[x]` Replace manual credential forms with secure email reset & verification links
+- `[x]` Implement Profile Picture upload to Firebase Storage with canvas compression & MongoDB sync
+- `[x]` Display workspace statistics & recent activity on Profile Settings page

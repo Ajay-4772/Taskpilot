@@ -1,0 +1,15 @@
+===================================
+Firebase → MongoDB Migration Report
+===================================
+
+Firebase Users Found: 7
+
+Existing MongoDB Users: 1
+
+New Users Added: 6
+
+Duplicates Skipped: 1
+
+Failed Users: 0
+
+Migration Completed Successfully

@@ -2,24 +2,64 @@ const User = require("../models/User");
 
 const syncUser = async (req, res, next) => {
   try {
-    const { name, email, photoURL } = req.body;
     const uid = req.user.uid;
+    const emailFromToken = req.user.email || "";
+    const nameFromToken = req.user.name || emailFromToken.split("@")[0] || "Workspace Member";
+    const photoFromToken = req.user.picture || "";
+    const verifiedFromToken = req.user.email_verified || false;
+    
+    // Extract provider from Firebase token metadata
+    let providerFromToken = "password";
+    if (req.user.firebase?.sign_in_provider) {
+      providerFromToken = req.user.firebase.sign_in_provider;
+    }
+
+    const { name: bodyName, email: bodyEmail, photoURL: bodyPhoto } = req.body;
+
+    const targetName = bodyName || nameFromToken;
+    const targetEmail = bodyEmail || emailFromToken;
+    const targetPhoto = bodyPhoto !== undefined ? bodyPhoto : photoFromToken;
 
     let user = await User.findOne({ uid });
     if (user) {
-      if (name) user.name = name;
-      if (email) user.email = email;
-      if (photoURL !== undefined) user.photoURL = photoURL;
+      let hasChanges = false;
+      
+      if (user.name !== targetName && targetName) {
+        user.name = targetName;
+        hasChanges = true;
+      }
+      if (user.email !== targetEmail && targetEmail) {
+        user.email = targetEmail;
+        hasChanges = true;
+      }
+      if (user.photoURL !== targetPhoto && targetPhoto !== undefined) {
+        user.photoURL = targetPhoto;
+        hasChanges = true;
+      }
+      if (user.emailVerified !== verifiedFromToken) {
+        user.emailVerified = verifiedFromToken;
+        hasChanges = true;
+      }
+      if (user.provider !== providerFromToken) {
+        user.provider = providerFromToken;
+        hasChanges = true;
+      }
+
+      user.lastLogin = Date.now();
       user.updatedAt = Date.now();
       await user.save();
     } else {
+      // Create new user automatically in MongoDB
       user = await User.create({
         uid,
-        name: name || email.split("@")[0],
-        email,
-        photoURL: photoURL || "",
+        name: targetName || "Workspace Member",
+        email: targetEmail || `${uid}@taskflow-sync.local`,
+        provider: providerFromToken,
+        emailVerified: verifiedFromToken,
+        photoURL: targetPhoto || "",
         createdAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        lastLogin: Date.now()
       });
     }
 
