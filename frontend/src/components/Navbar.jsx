@@ -2,8 +2,8 @@ import React from "react";
 import { useAuth } from "../auth/AuthContext";
 import { Sun, Moon, LogOut, CheckSquare, Plus, LayoutDashboard } from "lucide-react";
 
-const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick }) => {
-  const { user, logout } = useAuth();
+const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick, activeTab, onTabChange, onLogoutClick }) => {
+  const { user } = useAuth();
 
   const getInitials = (name) => {
     if (!name) return "U";
@@ -15,23 +15,45 @@ const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick }) => {
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-1.5 sm:gap-2">
         
         {/* Left Side: Logo & Brand */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div 
+          className="flex items-center gap-2 shrink-0 cursor-pointer"
+          onClick={() => onTabChange("dashboard")}
+        >
           <div className="flex items-center justify-center bg-primary text-white rounded-xl shadow-md shadow-primary/20 w-8 h-8 sm:w-9 sm:h-9">
             <CheckSquare size={16} />
           </div>
           <span className="text-sm sm:text-lg font-bold tracking-tight text-[var(--text-main)] hidden min-[400px]:block">
-            TaskPilot
+            TaskFlow
           </span>
         </div>
 
         {/* Center: Navigation Pills */}
         <div className="flex items-center gap-1 sm:gap-2">
-          <button className="nav-link-custom active px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold">
+          <button 
+            type="button"
+            className={`nav-link-custom px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer ${
+              activeTab === "dashboard" ? "active" : ""
+            }`}
+            onClick={() => onTabChange("dashboard")}
+          >
             <LayoutDashboard size={14} />
             <span className="hidden sm:inline">Dashboard</span>
           </button>
+          
           <button 
-            className="nav-link-custom px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold"
+            type="button"
+            className={`nav-link-custom px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer ${
+              activeTab === "profile" ? "active" : ""
+            }`}
+            onClick={() => onTabChange("profile")}
+          >
+            <User size={14} />
+            <span className="hidden sm:inline">Profile</span>
+          </button>
+
+          <button 
+            type="button"
+            className="nav-link-custom px-2.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold cursor-pointer"
             onClick={onAddTaskClick}
           >
             <Plus size={14} />
@@ -54,29 +76,39 @@ const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick }) => {
             )}
           </button>
 
-          {/* User Initial Avatar */}
-          <div className="flex items-center">
+          {/* User Initial Avatar / Link to Profile */}
+          <button 
+            type="button"
+            onClick={() => onTabChange("profile")}
+            className="flex items-center cursor-pointer border-0 bg-transparent p-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40"
+            title="Profile Settings"
+          >
             {user?.photoURL ? (
               <img 
                 src={user.photoURL} 
-                alt={user.displayName} 
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-[var(--border-color)] shadow-sm"
+                alt={user.displayName || "User"} 
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border shadow-sm transition-all ${
+                  activeTab === "profile" ? "border-primary ring-2 ring-primary/20" : "border-[var(--border-color)]"
+                }`}
                 referrerPolicy="no-referrer"
               />
             ) : (
               <div 
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-md shadow-primary/20"
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-[10px] sm:text-xs font-bold shadow-md transition-all ${
+                  activeTab === "profile" ? "ring-2 ring-primary/45 scale-105" : ""
+                }`}
                 style={{ backgroundColor: "#7C5CFC" }}
               >
                 {getInitials(user?.displayName || user?.email)}
               </div>
             )}
-          </div>
+          </button>
 
           {/* Logout Action */}
           <button 
-            className="flex items-center gap-1 text-xs sm:text-sm font-medium text-[var(--text-muted)] hover:text-red-500 transition-colors border-0 bg-transparent p-0 cursor-pointer ml-1"
-            onClick={logout}
+            type="button"
+            className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-[var(--text-muted)] hover:text-red-500 transition-colors border-0 bg-transparent p-0 cursor-pointer ml-1"
+            onClick={onLogoutClick}
           >
             <LogOut size={15} />
             <span className="hidden sm:inline">Logout</span>

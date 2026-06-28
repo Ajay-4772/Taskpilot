@@ -5,7 +5,13 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  updateProfile,
+  updatePassword,
+  updateEmail,
+  verifyBeforeUpdateEmail,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from "firebase/auth";
 
 const AuthContext = createContext();
@@ -142,6 +148,47 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUserProfile = async (displayName) => {
+    if (!auth.currentUser) throw new Error("No authenticated user");
+    await updateProfile(auth.currentUser, { displayName });
+    
+    // Refresh user state
+    const firebaseUser = auth.currentUser;
+    const userDetails = {
+      uid: firebaseUser.uid,
+      displayName: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+      email: firebaseUser.email,
+      photoURL: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${firebaseUser.email}&background=7C5CFC&color=fff`,
+      metadata: {
+        creationTime: firebaseUser.metadata.creationTime,
+        lastSignInTime: firebaseUser.metadata.lastSignInTime
+      }
+    };
+    setUser(userDetails);
+    localStorage.setItem("taskpilot_user", JSON.stringify(userDetails));
+    return userDetails;
+  };
+
+  const updateUserEmail = async (currentPassword, newEmail) => {
+    if (!auth.currentUser) throw new Error("No authenticated user");
+    const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+    await reauthenticateWithCredential(auth.currentUser, credential);
+    
+    // Using verifyBeforeUpdateEmail since updateEmail is deprecated in newer Firebase SDKs
+    if (typeof verifyBeforeUpdateEmail === "function") {
+      await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
+    } else {
+      await updateEmail(auth.currentUser, newEmail);
+    }
+  };
+
+  const updateUserPassword = async (currentPassword, newPassword) => {
+    if (!auth.currentUser) throw new Error("No authenticated user");
+    const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+    await reauthenticateWithCredential(auth.currentUser, credential);
+    await updatePassword(auth.currentUser, newPassword);
+  };
+
   const logout = async () => {
     try {
       setLoading(true);
@@ -167,6 +214,9 @@ export const AuthProvider = ({ children }) => {
     loginWithEmail,
     signupWithEmail,
     logout,
+    updateUserProfile,
+    updateUserEmail,
+    updateUserPassword,
     isFirebaseConfigured
   };
 

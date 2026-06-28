@@ -7,12 +7,12 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100" style={{
-        background: "var(--bg-main)",
-        color: "var(--text-main)"
-      }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div className="flex items-center justify-center min-h-screen bg-theme-main text-[var(--text-main)]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-[#7C5CFC] border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-semibold tracking-wider text-[var(--text-muted)] animate-pulse uppercase">
+            Initializing TaskFlow...
+          </span>
         </div>
       </div>
     );
