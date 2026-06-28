@@ -64,7 +64,7 @@ in your backend .env file before running this migration.
           await User.create({
             uid,
             name: displayName || email?.split("@")[0] || "Workspace Member",
-            email: email || `${uid}@taskflow-imported.local`,
+            email: email || `${uid}@taskpilot-imported.local`,
             provider,
             emailVerified: emailVerified || false,
             photoURL: photoURL || "",

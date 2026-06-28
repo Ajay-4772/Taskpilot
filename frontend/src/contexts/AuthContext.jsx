@@ -37,7 +37,7 @@ axios.interceptors.request.use(
         const idToken = await auth.currentUser.getIdToken();
         config.headers["Authorization"] = `Bearer ${idToken}`;
       } else {
-        const localToken = localStorage.getItem("taskflow_token");
+        const localToken = localStorage.getItem("taskpilot_token");
         if (localToken) {
           config.headers["Authorization"] = `Bearer ${localToken}`;
         }
@@ -52,13 +52,13 @@ axios.interceptors.request.use(
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const localUser = localStorage.getItem("taskflow_user");
+    const localUser = localStorage.getItem("taskpilot_user");
     return localUser ? JSON.parse(localUser) : null;
   });
-  const [token, setToken] = useState(() => localStorage.getItem("taskflow_token"));
+  const [token, setToken] = useState(() => localStorage.getItem("taskpilot_token"));
   const [loading, setLoading] = useState(() => {
     // If we have cached credentials, initialize immediately without blocking loader screens
-    return !localStorage.getItem("taskflow_token");
+    return !localStorage.getItem("taskpilot_token");
   });
   const [authError, setAuthError] = useState(null);
 
@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     setUser(userDetails);
-    localStorage.setItem("taskflow_user", JSON.stringify(userDetails));
+    localStorage.setItem("taskpilot_user", JSON.stringify(userDetails));
     return userDetails;
   };
 
@@ -124,7 +124,7 @@ export const AuthProvider = ({ children }) => {
       } catch (err) {
         console.warn("Backend connectivity check failed on startup:", err.message);
         // Only set blocking connection error if we are logged in (requires backend transactions)
-        if (localStorage.getItem("taskflow_token")) {
+        if (localStorage.getItem("taskpilot_token")) {
           setAuthError({
             type: "server",
             message: "Unable to connect to the server. Please try again."
@@ -142,10 +142,10 @@ export const AuthProvider = ({ children }) => {
           try {
             const idToken = await firebaseUser.getIdToken();
             setToken(idToken);
-            localStorage.setItem("taskflow_token", idToken);
+            localStorage.setItem("taskpilot_token", idToken);
             
             // Set loading to false early if session cache exists to optimize rendering
-            if (localStorage.getItem("taskflow_user")) {
+            if (localStorage.getItem("taskpilot_user")) {
               setLoading(false);
             }
             
@@ -164,8 +164,8 @@ export const AuthProvider = ({ children }) => {
         } else {
           setUser(null);
           setToken(null);
-          localStorage.removeItem("taskflow_user");
-          localStorage.removeItem("taskflow_token");
+          localStorage.removeItem("taskpilot_user");
+          localStorage.removeItem("taskpilot_token");
         }
         setLoading(false);
       });
@@ -238,7 +238,7 @@ export const AuthProvider = ({ children }) => {
       createdAt: response.data.createdAt
     };
     setUser(userDetails);
-    localStorage.setItem("taskflow_user", JSON.stringify(userDetails));
+    localStorage.setItem("taskpilot_user", JSON.stringify(userDetails));
     return userDetails;
   };
 
@@ -280,8 +280,8 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setUser(null);
       setToken(null);
-      localStorage.removeItem("taskflow_user");
-      localStorage.removeItem("taskflow_token");
+      localStorage.removeItem("taskpilot_user");
+      localStorage.removeItem("taskpilot_token");
       setLoading(false);
     }
   };

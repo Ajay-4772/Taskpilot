@@ -53,7 +53,7 @@ const syncUser = async (req, res, next) => {
       user = await User.create({
         uid,
         name: targetName || "Workspace Member",
-        email: targetEmail || `${uid}@taskflow-sync.local`,
+        email: targetEmail || `${uid}@taskpilot-sync.local`,
         provider: providerFromToken,
         emailVerified: verifiedFromToken,
         photoURL: targetPhoto || "",

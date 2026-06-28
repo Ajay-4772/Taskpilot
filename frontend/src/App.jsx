@@ -21,7 +21,7 @@ function App() {
 
   // Initialize theme from localStorage
   const [darkMode, setDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem("taskflow_theme");
+    const savedTheme = localStorage.getItem("taskpilot_theme");
     return savedTheme === "dark";
   });
 
@@ -30,11 +30,11 @@ function App() {
     if (darkMode) {
       document.documentElement.setAttribute("data-theme", "dark");
       document.documentElement.classList.add("dark");
-      localStorage.setItem("taskflow_theme", "dark");
+      localStorage.setItem("taskpilot_theme", "dark");
     } else {
       document.documentElement.setAttribute("data-theme", "light");
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("taskflow_theme", "light");
+      localStorage.setItem("taskpilot_theme", "light");
     }
   }, [darkMode]);
 
@@ -89,7 +89,7 @@ function App() {
             onClose={() => setIsLogoutModalOpen(false)}
             onConfirm={handleLogoutConfirm}
             title="Confirm Sign Out"
-            message="Are you sure you want to log out of your TaskFlow workspace?"
+            message="Are you sure you want to log out of your TaskPilot workspace?"
             type="logout"
             confirmText="Log Out"
           />

@@ -1,6 +1,6 @@
-# ✈️ TaskFlow — Premium SaaS Task Management Portal
+# ✈️ TaskPilot — Premium SaaS Task Management Portal
 
-TaskFlow is a premium, full-stack SaaS task management portal built with the **MERN** stack (MongoDB, Express.js, React, Node.js), **Tailwind CSS v4**, **Framer Motion**, and **Firebase Authentication**. It features a state-of-the-art dark-mode glassmorphic user interface, real-time analytics dashboards, and secure token-based user data isolation.
+TaskPilot is a premium, full-stack SaaS task management portal built with the **MERN** stack (MongoDB, Express.js, React, Node.js), **Tailwind CSS v4**, **Framer Motion**, and **Firebase Authentication**. It features a state-of-the-art dark-mode glassmorphic user interface, real-time analytics dashboards, and secure token-based user data isolation.
 
 ### 🔗 Live Production Web App
 👉 **[www.mini-project-management-4772.web.app](https://mini-project-management-4772.web.app)** 
@@ -23,7 +23,7 @@ TaskFlow is a premium, full-stack SaaS task management portal built with the **M
 
 ## 🏗️ System Architecture
 
-TaskFlow is partitioned into a secure frontend client hosted on **Firebase Hosting** and an isolated API backend running on **Render Web Services**. Database persistence is managed via **MongoDB Atlas**, and authentication session state is handled securely by **Firebase Authentication**.
+TaskPilot is partitioned into a secure frontend client hosted on **Firebase Hosting** and an isolated API backend running on **Render Web Services**. Database persistence is managed via **MongoDB Atlas**, and authentication session state is handled securely by **Firebase Authentication**.
 
 ```mermaid
 graph TD
@@ -65,7 +65,7 @@ graph TD
 ## 📂 Project Structure
 
 ```text
-taskflow/
+taskpilot/
 ├── backend/
 │   ├── config/
 │   │   ├── db.js                 # MongoDB Atlas mongoose connection

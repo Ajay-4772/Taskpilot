@@ -11,13 +11,13 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
   // Initialize sidebar collapsed state (mobile/tablet start collapsed automatically)
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (window.innerWidth < 768) return true;
-    const saved = localStorage.getItem("taskflow_sidebar_collapsed");
+    const saved = localStorage.getItem("taskpilot_sidebar_collapsed");
     return saved === "true";
   });
 
   // Persist sidebar collapsed status
   useEffect(() => {
-    localStorage.setItem("taskflow_sidebar_collapsed", isCollapsed);
+    localStorage.setItem("taskpilot_sidebar_collapsed", isCollapsed);
   }, [isCollapsed]);
 
   const getInitials = (name) => {
@@ -71,7 +71,7 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
                 alt="TaskPilot Logo" 
                 className="w-8 h-8 object-contain dark:invert shrink-0" 
               />
-              <span className="text-sm font-bold tracking-tight text-white select-none truncate">TaskFlow</span>
+              <span className="text-sm font-bold tracking-tight text-white select-none truncate">TaskPilot</span>
             </div>
             <button 
               type="button" 
@@ -173,7 +173,7 @@ const SaaSLayout = ({ children, activeTab, onTabChange, onLogoutClick, darkMode,
             alt="TaskPilot Logo" 
             className="w-7 h-7 object-contain dark:invert" 
           />
-          <span className="text-sm font-bold text-[var(--text-main)] select-none">TaskFlow</span>
+          <span className="text-sm font-bold text-[var(--text-main)] select-none">TaskPilot</span>
         </div>
         <button
           type="button"

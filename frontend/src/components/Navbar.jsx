@@ -42,7 +42,7 @@ const Navbar = ({ darkMode, onToggleTheme, onAddTaskClick, activeTab, onTabChang
             className="w-8 h-8 sm:w-9 sm:h-9 object-contain dark:invert shrink-0" 
           />
           <span className="text-sm sm:text-lg font-bold tracking-tight text-[var(--text-main)] hidden min-[400px]:block">
-            TaskFlow
+            TaskPilot
           </span>
         </div>
 

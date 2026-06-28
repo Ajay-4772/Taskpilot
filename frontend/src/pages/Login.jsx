@@ -77,7 +77,7 @@ const Login = () => {
 
   // Load remembered login
   useEffect(() => {
-    const remembered = localStorage.getItem("taskflow_remembered_email");
+    const remembered = localStorage.getItem("taskpilot_remembered_email");
     if (remembered) {
       setEmail(remembered);
       setRememberMe(true);
@@ -130,9 +130,9 @@ const Login = () => {
         await loginWithEmail(email, password);
         showToast("Welcome back! Login successful.", "success");
         if (rememberMe) {
-          localStorage.setItem("taskflow_remembered_email", email);
+          localStorage.setItem("taskpilot_remembered_email", email);
         } else {
-          localStorage.removeItem("taskflow_remembered_email");
+          localStorage.removeItem("taskpilot_remembered_email");
         }
       } catch (err) {
         showToast(getFirebaseErrorMessage(err), "error");
@@ -360,7 +360,7 @@ const Login = () => {
             </button>
 
             <div className="text-center text-xs">
-              <span className="text-zinc-500 font-semibold">New to TaskFlow? </span>
+              <span className="text-zinc-500 font-semibold">New to TaskPilot? </span>
               <button
                 onClick={() => setView("signup")}
                 className="text-black font-bold hover:underline bg-transparent border-0 cursor-pointer"
@@ -742,7 +742,7 @@ const Login = () => {
 
       {/* Monochrome B&W copyright */}
       <div className="absolute bottom-6 text-[10px] text-zinc-500 font-bold uppercase tracking-widest select-none">
-        TaskFlow © 2026
+        TaskPilot © 2026
       </div>
     </div>
   );

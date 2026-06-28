@@ -30,7 +30,7 @@ const ProtectedRoute = ({ children }) => {
             className="w-20 h-20 object-contain animate-pulse dark:invert" 
           />
           <span className="text-[9px] font-bold tracking-widest text-[var(--text-muted)] uppercase">
-            Initializing TaskFlow...
+            Initializing TaskPilot...
           </span>
         </div>
       </div>

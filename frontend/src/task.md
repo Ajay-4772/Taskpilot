@@ -1,4 +1,4 @@
-# TaskFlow Overhaul Todo Checklist
+# TaskPilot Overhaul Todo Checklist
 
 - `[x]` Update `firebaseConfig.js` to initialize Firestore (`db`) (DEPRECATED - REMOVED FIRESTORE)
 - `[x]` Reorganize and update Contexts
