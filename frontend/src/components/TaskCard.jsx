@@ -32,9 +32,25 @@ const TaskCard = React.memo(({ task, onComplete, onEdit, onDelete }) => {
     return new Date(dateString).toLocaleDateString("en-US", options);
   };
 
+  const formatDueDate = (dateStr) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("T")[0].split("-");
+    if (parts.length !== 3) return "";
+    const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
   const isOverdue = () => {
     if (!task.dueDate || task.status === "Completed") return false;
-    return new Date(task.dueDate) < new Date();
+    const parts = task.dueDate.split("T")[0].split("-");
+    if (parts.length !== 3) return false;
+    const dueYear = parseInt(parts[0], 10);
+    const dueMonth = parseInt(parts[1], 10) - 1;
+    const dueDay = parseInt(parts[2], 10);
+    const dueDateObj = new Date(dueYear, dueMonth, dueDay);
+    const today = new Date();
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return dueDateObj < todayMidnight;
   };
 
   return (
@@ -76,7 +92,7 @@ const TaskCard = React.memo(({ task, onComplete, onEdit, onDelete }) => {
               isOverdue() ? "text-red-500" : "text-[var(--text-muted)]"
             }`}>
               {isOverdue() ? <AlertCircle size={11} className="animate-pulse" /> : <Calendar size={11} />}
-              <span>Due: {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+              <span>Due: {formatDueDate(task.dueDate)}</span>
               {isOverdue() && <span>(Overdue)</span>}
             </div>
           )}

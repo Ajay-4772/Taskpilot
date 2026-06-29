@@ -69,15 +69,25 @@ const CustomDropdown = ({ value, onChange, options, disabled }) => {
 // Custom Date Picker with React Portal & Intelligent Viewport Positioning
 const CustomDatePicker = ({ value, onChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
+
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return null;
+    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  };
+
   const [currentDate, setCurrentDate] = useState(() => {
-    return value ? new Date(value) : new Date();
+    const parsed = parseLocalDate(value);
+    return parsed || new Date();
   });
   
   const [coords, setCoords] = useState({ top: 0, left: 0, openUpward: false });
   const buttonRef = useRef(null);
 
   const [focusedDate, setFocusedDate] = useState(() => {
-    return value ? new Date(value) : new Date();
+    const parsed = parseLocalDate(value);
+    return parsed || new Date();
   });
 
   // Calculate viewport boundaries and open direction
@@ -119,7 +129,8 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
 
   useEffect(() => {
     if (isOpen) {
-      setFocusedDate(value ? new Date(value) : new Date());
+      const parsed = parseLocalDate(value);
+      setFocusedDate(parsed || new Date());
     }
   }, [isOpen, value]);
 
@@ -141,8 +152,10 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
 
   const formatDateLabel = (dateStr) => {
     if (!dateStr) return "Select Due Date";
+    const parsed = parseLocalDate(dateStr);
+    if (!parsed) return "Select Due Date";
     const options = { year: "numeric", month: "long", day: "numeric" };
-    return new Date(dateStr).toLocaleDateString("en-US", options);
+    return parsed.toLocaleDateString("en-US", options);
   };
 
   const year = currentDate.getFullYear();
@@ -174,7 +187,7 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
 
   const handleDaySelect = (dayDate) => {
     if (!dayDate) return;
-    const formatted = dayDate.toISOString().split("T")[0]; // YYYY-MM-DD
+    const formatted = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, "0")}-${String(dayDate.getDate()).padStart(2, "0")}`;
     onChange(formatted);
     setIsOpen(false);
   };
@@ -189,7 +202,8 @@ const CustomDatePicker = ({ value, onChange, disabled }) => {
 
   const isSelected = (dayDate) => {
     if (!dayDate || !value) return false;
-    const valDate = new Date(value);
+    const valDate = parseLocalDate(value);
+    if (!valDate) return false;
     return valDate.getDate() === dayDate.getDate() &&
            valDate.getMonth() === dayDate.getMonth() &&
            valDate.getFullYear() === dayDate.getFullYear();
@@ -365,9 +379,15 @@ const TaskFormModal = ({ isOpen, onClose, onSave, taskToEdit }) => {
       setStatus(taskToEdit.status || "Pending");
       setPriority(taskToEdit.priority || "Low");
       if (taskToEdit.dueDate) {
-        const dateObj = new Date(taskToEdit.dueDate);
-        const formattedDate = dateObj.toISOString().split("T")[0];
-        setDueDate(formattedDate);
+        let dateStr = taskToEdit.dueDate;
+        if (dateStr instanceof Date) {
+          dateStr = dateStr.toISOString();
+        }
+        if (typeof dateStr === "string") {
+          setDueDate(dateStr.split("T")[0]);
+        } else {
+          setDueDate("");
+        }
       } else {
         setDueDate("");
       }

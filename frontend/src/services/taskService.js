@@ -20,7 +20,7 @@ export const addTask = async (taskData) => {
     description: taskData.description,
     status: taskData.status || "Pending",
     priority: taskData.priority || "Low",
-    dueDate: taskData.dueDate ? (taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate) : null
+    dueDate: taskData.dueDate || null
   };
   const response = await axios.post(`${getBaseUrl()}/tasks`, payload);
   return response.data;
@@ -35,7 +35,7 @@ export const updateTask = async (taskId, taskData) => {
     description: taskData.description,
     status: taskData.status,
     priority: taskData.priority,
-    dueDate: taskData.dueDate ? (taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate) : null
+    dueDate: taskData.dueDate || null
   };
   const response = await axios.put(`${getBaseUrl()}/tasks/${taskId}`, payload);
   return response.data;
